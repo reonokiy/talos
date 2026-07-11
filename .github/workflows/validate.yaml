@@ -20,7 +20,7 @@ jobs:
         with:
           version: 2026.7.5
           install: true
-          install_args: --locked kubectl helm helmfile shellcheck actionlint
+          install_args: --locked kubectl helm helmfile terraform shellcheck actionlint
           cache: true
 
       - name: Validate

@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: check validate render publish-b2 rollback-b2 configure-github bootstrap-cilium bootstrap-flux sync-flux-secret status
+.PHONY: check validate render publish-b2 rollback-b2 configure-github bootstrap-cilium bootstrap-flux sync-flux-secret status b2-init b2-validate b2-plan b2-apply
 
 check:
 	mise run check
@@ -32,3 +32,15 @@ sync-flux-secret:
 
 status:
 	mise run status
+
+b2-init:
+	mise run b2:tf:init
+
+b2-validate:
+	mise run b2:tf:validate
+
+b2-plan:
+	mise run b2:tf:plan
+
+b2-apply:
+	mise run b2:tf:apply

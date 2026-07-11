@@ -132,48 +132,59 @@ across certificate rotations.
 
 ## 4. Create B2 keys
 
-Create one private B2 bucket and three application keys. Do not use the B2
-master key. Keep all file versions for the releases prefix; optionally enable
-B2 Object Lock/default retention when those audit versions must be immutable.
+[`terraform/b2`](terraform/b2) uses Terraform to create the private bucket and three
+prefix-scoped application keys. The root `b2-terraform` fnox profile loads the
+account-level B2 key from `talos.nokiy.net/b2-terraform-admin` only for local
+plan/apply subprocesses:
+
+```bash
+mise run b2:tf:init
+mise run b2:tf:plan
+mise run b2:tf:apply
+```
+
+The account-level key is not used by workloads or stored in fnox. Terraform
+stores generated application-key secrets in the Terraform-managed 1Password
+item. State is stored in the HCP Terraform `talos-b2` workspace and also
+contains those values, so workspace access must be restricted; see
+[`terraform/b2/README.md`](terraform/b2/README.md) before the first apply.
 
 | Key | Prefix restriction | Capabilities | Stored in |
 |---|---|---|---|
-| Publisher | `clusters/production/` | `writeFiles` | Publisher vault, then GitHub Environment |
-| Flux reader | `clusters/production/current/` | `listFiles`, `readFiles`, plus “List All Bucket Names” | Runtime vault |
-| Recovery reader | `clusters/production/releases/` | `readFiles` | Runtime vault |
+| Publisher | `clusters/production/` | `writeFiles` | 1Password, then GitHub Environment |
+| Flux reader | `clusters/production/current/` | `listFiles`, `readFiles`, plus “List All Bucket Names” | 1Password, then Kubernetes Secret |
+| Recovery reader | `clusters/production/releases/` | `readFiles` | 1Password only |
 
-Keep the trailing slash in both B2 restrictions and 1Password fields. Flux's
-generic S3 client performs a bucket-existence check, so the Flux reader must
-have “List All Bucket Names”.
+Terraform keeps the trailing slash in every key restriction. Flux's generic S3
+client performs a bucket-existence check, so only its reader receives
+`listBuckets` in addition to object list/read access.
 
 ## 5. Create the 1Password layout
 
 [`fnox.toml`](fnox.toml) expects these exact vault, item and field names.
 
-### Vault `Talos GitOps Publisher`
+### Vault `talos.nokiy.net`
 
-Item `B2 Publisher`:
+Item `b2-talos-nokiy-net`:
 
 | Field | Example |
 |---|---|
-| `endpoint` | `s3.eu-central-003.backblazeb2.com` |
-| `region` | `eu-central-003` |
-| `bucket` | `my-flux-artifacts` |
-| `current-prefix` | `clusters/production/current/` |
-| `releases-prefix` | `clusters/production/releases/` |
-| `access-key-id` | Publisher B2 application key ID |
-| `secret-access-key` | Publisher B2 application key |
+| `ACCESS_KEY` | Publisher B2 application key ID |
+| `SECRET_KEY` | Publisher B2 application key |
+| `READ_ACCESS_KEY` | Flux B2 reader key ID |
+| `READ_SECRET_KEY` | Flux B2 reader application key |
+| `RECOVERY_ACCESS_KEY` | Recovery B2 reader key ID |
+| `RECOVERY_SECRET_KEY` | Recovery B2 reader application key |
 
-### Vault `Talos GitOps Runtime`
+The non-secret B2 settings are committed as fnox defaults:
 
-Item `B2 Runtime`:
-
-| Field | Value |
-|---|---|
-| `reader-key-id` | Flux B2 application key ID |
-| `reader-application-key` | Flux B2 application key |
-| `recovery-key-id` | Recovery B2 application key ID |
-| `recovery-application-key` | Recovery B2 application key |
+```text
+B2_BUCKET=talos-nokiy-net
+B2_ENDPOINT=s3.eu-central-003.backblazeb2.com
+B2_REGION=eu-central-003
+B2_PREFIX=clusters/production/current/
+B2_ARCHIVE_PREFIX=clusters/production/releases/
+```
 
 Check references without exporting values into your shell:
 
@@ -190,7 +201,7 @@ Test the publisher locally first:
 mise run publish-b2
 ```
 
-After the private GitHub repository/remote exists, create the `production`
+After the GitHub repository/remote exists, create the `production`
 Environment. This local task reads the Publisher vault and stores its five
 non-secret settings as GitHub Variables and its two B2 credentials as GitHub
 Secrets. It also restricts the Environment to the `main` branch, so a manually

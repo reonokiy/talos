@@ -12,8 +12,8 @@ actionlint = "1.7.12"
 cilium-cli = "0.19.5"
 kubelogin = "1.36.2"
 fnox = "1.30.0"
-op = "2.34.1"
 gh = "2.96.0"
+terraform = "1.13.5"
 
 [tasks.check]
 description = "Render the production bundle and template the pinned Cilium chart"
@@ -25,11 +25,12 @@ run = [
   "shellcheck scripts/*.sh",
   "actionlint .github/workflows/*.yaml",
   "./scripts/check-ci-boundary.sh",
+  "terraform fmt -check -recursive terraform",
 ]
 
 [tasks.validate]
 description = "Run all repository validation"
-depends = ["check", "lint"]
+depends = ["check", "lint", "b2:tf:validate"]
 
 [tasks.render]
 description = "Render the single production bundle"
@@ -70,3 +71,26 @@ run = [
   "flux get all -A",
   "cilium status --wait --interactive=false --wait-duration 1m --output summary",
 ]
+
+[tasks."b2:tf:init"]
+description = "Initialize the B2 Terraform stack"
+dir = "terraform/b2"
+run = "fnox --no-daemon --profile b2-terraform exec --no-defaults -- terraform init"
+
+[tasks."b2:tf:validate"]
+description = "Initialize providers without a backend and validate the B2 stack"
+dir = "terraform/b2"
+run = [
+  "terraform init -backend=false",
+  "terraform validate",
+]
+
+[tasks."b2:tf:plan"]
+description = "Plan the B2 bucket and scoped application keys"
+dir = "terraform/b2"
+run = "fnox --no-daemon --profile b2-terraform exec --no-defaults -- terraform plan"
+
+[tasks."b2:tf:apply"]
+description = "Apply the B2 bucket and scoped application keys"
+dir = "terraform/b2"
+run = "fnox --no-daemon --profile b2-terraform exec --no-defaults -- terraform apply"

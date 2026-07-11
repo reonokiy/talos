@@ -5,44 +5,52 @@
 if_missing = "error"
 env = "exec"
 
-# Local operators use this vault for publishing and for provisioning GitHub
-# Environment. GitHub Actions itself does not connect to 1Password.
-[providers.op_publisher]
+# Local operators authenticate through 1Password Desktop. Full op:// references
+# select the vault for each item; the provider itself is not vault-scoped.
+[providers.op]
 type = "1password"
-vault = "Talos GitOps Publisher"
-daemon_cache = false
 
-# Personal operators use this vault to bootstrap/rotate the cluster reader and
-# to perform an offline recovery.
-[providers.op_runtime]
-type = "1password"
-vault = "Talos GitOps Runtime"
-daemon_cache = false
+# Supplies the account-level B2 credential used only by local Terraform runs
+# to create the bucket and rotate scoped application keys. OP_ACCOUNT selects
+# the local Desktop account; replace its placeholder or override it at runtime.
+[profiles.b2-terraform.secrets]
+OP_ACCOUNT = { provider = "op", value = "op://Personal/1Password Account/email" }
+TF_CLOUD_ORGANIZATION = { default = "reonokiy" }
+TF_WORKSPACE = { default = "talos-b2" }
+TF_TOKEN_app_terraform_io = { provider = "op", value = "op://dev/terraform/API_TOKEN"}
+B2_APPLICATION_KEY_ID = { provider = "op", value = "op://dev/b2eu/MASTER_KEY_ID" }
+B2_APPLICATION_KEY = { provider = "op", value = "op://dev/b2eu/MASTER_KEY" }
 
+# Publishes the rendered active bundle and versioned release copies to B2.
+# It also provisions the B2 writer in GitHub's production Environment.
 [profiles.publisher.secrets]
-B2_ENDPOINT = { provider = "op_publisher", value = "B2 Publisher/endpoint"}
-B2_REGION = { provider = "op_publisher", value = "B2 Publisher/region", daemon_cache = false }
-B2_BUCKET = { provider = "op_publisher", value = "B2 Publisher/bucket", daemon_cache = false }
-B2_PREFIX = { provider = "op_publisher", value = "B2 Publisher/current-prefix", daemon_cache = false }
-B2_ARCHIVE_PREFIX = { provider = "op_publisher", value = "B2 Publisher/releases-prefix", daemon_cache = false }
-AWS_ACCESS_KEY_ID = { provider = "op_publisher", value = "B2 Publisher/access-key-id", daemon_cache = false }
-AWS_SECRET_ACCESS_KEY = { provider = "op_publisher", value = "B2 Publisher/secret-access-key", daemon_cache = false }
+B2_ENDPOINT = { default = "s3.eu-central-003.backblazeb2.com" }
+B2_REGION = { default = "eu-central-003" }
+B2_BUCKET = { default = "talos-nokiy-net" }
+B2_PREFIX = { default = "clusters/production/current/" }
+B2_ARCHIVE_PREFIX = { default = "clusters/production/releases/" }
+AWS_ACCESS_KEY_ID = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/ACCESS_KEY" }
+AWS_SECRET_ACCESS_KEY = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/SECRET_KEY" }
 
+# Bootstraps Flux with the read-only credential needed to fetch the active B2
+# bundle. This profile cannot publish or restore cluster state.
 [profiles.flux-bootstrap.secrets]
-B2_ENDPOINT = { provider = "op_publisher", value = "B2 Publisher/endpoint", daemon_cache = false }
-B2_REGION = { provider = "op_publisher", value = "B2 Publisher/region", daemon_cache = false }
-B2_BUCKET = { provider = "op_publisher", value = "B2 Publisher/bucket", daemon_cache = false }
-B2_PREFIX = { provider = "op_publisher", value = "B2 Publisher/current-prefix", daemon_cache = false }
-B2_READ_KEY_ID = { provider = "op_runtime", value = "B2 Runtime/reader-key-id", daemon_cache = false }
-B2_READ_APPLICATION_KEY = { provider = "op_runtime", value = "B2 Runtime/reader-application-key", daemon_cache = false }
+B2_ENDPOINT = { default = "s3.eu-central-003.backblazeb2.com" }
+B2_REGION = { default = "eu-central-003" }
+B2_BUCKET = { default = "talos-nokiy-net" }
+B2_PREFIX = { default = "clusters/production/current/" }
+B2_READ_KEY_ID = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/READ_ACCESS_KEY" }
+B2_READ_APPLICATION_KEY = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/READ_SECRET_KEY" }
 
+# Reads one archived release with the recovery credential, then republishes it
+# as the active bundle with the same writer used by the publisher profile.
 [profiles.rollback.secrets]
-B2_ENDPOINT = { provider = "op_publisher", value = "B2 Publisher/endpoint", daemon_cache = false }
-B2_REGION = { provider = "op_publisher", value = "B2 Publisher/region", daemon_cache = false }
-B2_BUCKET = { provider = "op_publisher", value = "B2 Publisher/bucket", daemon_cache = false }
-B2_PREFIX = { provider = "op_publisher", value = "B2 Publisher/current-prefix", daemon_cache = false }
-B2_ARCHIVE_PREFIX = { provider = "op_publisher", value = "B2 Publisher/releases-prefix", daemon_cache = false }
-AWS_ACCESS_KEY_ID = { provider = "op_publisher", value = "B2 Publisher/access-key-id", daemon_cache = false }
-AWS_SECRET_ACCESS_KEY = { provider = "op_publisher", value = "B2 Publisher/secret-access-key", daemon_cache = false }
-B2_RECOVERY_READ_KEY_ID = { provider = "op_runtime", value = "B2 Runtime/recovery-key-id", daemon_cache = false }
-B2_RECOVERY_READ_APPLICATION_KEY = { provider = "op_runtime", value = "B2 Runtime/recovery-application-key", daemon_cache = false }
+B2_ENDPOINT = { default = "s3.eu-central-003.backblazeb2.com" }
+B2_REGION = { default = "eu-central-003" }
+B2_BUCKET = { default = "talos-nokiy-net" }
+B2_PREFIX = { default = "clusters/production/current/" }
+B2_ARCHIVE_PREFIX = { default = "clusters/production/releases/" }
+AWS_ACCESS_KEY_ID = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/ACCESS_KEY" }
+AWS_SECRET_ACCESS_KEY = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/SECRET_KEY" }
+B2_RECOVERY_READ_KEY_ID = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/RECOVERY_ACCESS_KEY" }
+B2_RECOVERY_READ_APPLICATION_KEY = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/RECOVERY_SECRET_KEY" }

@@ -3,3 +3,9 @@
 fnox.local.toml
 *.kubeconfig
 *.secret.yaml
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
