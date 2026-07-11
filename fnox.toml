@@ -11,10 +11,10 @@ env = "exec"
 type = "1password"
 
 # Supplies the account-level B2 credential used only by local Terraform runs
-# to create the bucket and rotate scoped application keys. OP_ACCOUNT selects
-# the local Desktop account; replace its placeholder or override it at runtime.
+# to create the bucket and rotate scoped application keys. fnox itself uses the
+# local Desktop session; only Terraform receives the Service Account token.
 [profiles.b2-terraform.secrets]
-OP_SERVICE_ACCOUNT = { provider = "op", value = "op://talos.nokiy.net/service-account/credential" }
+TF_VAR_onepassword_service_account_token = { provider = "op", value = "op://talos.nokiy.net/service-account/credential" }
 TF_CLOUD_ORGANIZATION = { default = "reonokiy" }
 TF_WORKSPACE = { default = "talos-b2" }
 TF_TOKEN_app_terraform_io = { provider = "op", value = "op://dev/terraform/API_TOKEN"}

@@ -9,9 +9,10 @@ execution mode to **Local**, and replace these placeholders in the root
 `fnox.toml`:
 
 ```text
-TF_CLOUD_ORGANIZATION=CHANGE_ME_TF_CLOUD_ORGANIZATION
+TF_CLOUD_ORGANIZATION=reonokiy
 TF_WORKSPACE=talos-b2
-TF_TOKEN_app_terraform_io=op://CHANGE_ME_VAULT/CHANGE_ME_ITEM/CHANGE_ME_FIELD
+TF_TOKEN_app_terraform_io=op://dev/terraform/API_TOKEN
+TF_VAR_onepassword_service_account_token=op://talos.nokiy.net/service-account/credential
 ```
 
 The `b2-terraform` profile injects the HCP token only into local Terraform
@@ -37,15 +38,15 @@ mise run b2:tf:plan
 mise run b2:tf:apply
 ```
 
-The 1Password provider uses the local `op` CLI and Desktop App integration. It
-does not use a service account. The root `fnox.toml` resolves `OP_ACCOUNT` from
-1Password; an exported value can override it when needed:
+Authentication is intentionally split. fnox uses the local `op` CLI/Desktop
+session to resolve the profile. The Terraform 1Password provider receives its
+Service Account token only through
+`TF_VAR_onepassword_service_account_token`. Do not export or define
+`OP_SERVICE_ACCOUNT_TOKEN`, because fnox would then use that token while
+resolving the profile.
 
-```bash
-mise exec -- op account list
-export OP_ACCOUNT='<URL or USER ID from op account list>'
-mise exec -- op account get --account "$OP_ACCOUNT"
-```
+The Service Account only needs write access to `talos.nokiy.net`; it does not
+need access to `dev`, where fnox reads the B2 master key and HCP token.
 
 If `b2-talos-nokiy-net` already exists, import it before the first plan so
 Terraform updates it instead of creating a duplicate. Copy the vault and item
