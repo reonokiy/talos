@@ -112,6 +112,13 @@ checksum = "sha256:66c7a844c45e01fa5933f8b9db56c19d23eca65db441d56d0312316e683bb
 url = "https://github.com/siderolabs/omni/releases/download/v1.9.1/omnictl-linux-amd64"
 url_api = "https://api.github.com/repos/siderolabs/omni/releases/assets/464433216"
 
+[[tools.op]]
+version = "2.34.1"
+backend = "vfox:op"
+
+[tools.op."platforms.linux-x64"]
+url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.1/op_linux_amd64_v2.34.1.zip"
+
 [[tools.shellcheck]]
 version = "0.11.0"
 backend = "aqua:koalaman/shellcheck"
