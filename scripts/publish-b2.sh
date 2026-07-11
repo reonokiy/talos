@@ -2,12 +2,6 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-if [[ -f "$ROOT/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$ROOT/.env"
-  set +a
-fi
 : "${B2_ENDPOINT:?set B2_ENDPOINT, without https://}"
 : "${B2_REGION:?set B2_REGION, e.g. eu-central-003}"
 : "${B2_BUCKET:?set B2_BUCKET}"
@@ -20,6 +14,9 @@ fi
 # Keep exactly one trailing slash in every object prefix.
 B2_PREFIX="${B2_PREFIX%/}/"
 B2_ARCHIVE_PREFIX="${B2_ARCHIVE_PREFIX%/}/"
+PUBLISH_KEY_ID=$AWS_ACCESS_KEY_ID
+PUBLISH_APPLICATION_KEY=$AWS_SECRET_ACCESS_KEY
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 
 if [[ -z ${RELEASE_ID:-} ]]; then
   RELEASE_ID=$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || date -u +%Y%m%dT%H%M%SZ)
@@ -38,6 +35,8 @@ export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
 export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
 export AWS_DEFAULT_REGION="$B2_REGION"
 
+AWS_ACCESS_KEY_ID="$PUBLISH_KEY_ID" \
+AWS_SECRET_ACCESS_KEY="$PUBLISH_APPLICATION_KEY" \
 aws s3 cp "$BUNDLE" \
   "s3://${B2_BUCKET}/${B2_ARCHIVE_PREFIX}${RELEASE_ID}/bundle.yaml" \
   --endpoint-url "$ENDPOINT_URL" \
@@ -46,6 +45,8 @@ aws s3 cp "$BUNDLE" \
 
 # Publish the active revision last. This is a single PutObject, so Flux never
 # observes a partially synchronized set of manifests.
+AWS_ACCESS_KEY_ID="$PUBLISH_KEY_ID" \
+AWS_SECRET_ACCESS_KEY="$PUBLISH_APPLICATION_KEY" \
 aws s3 cp "$BUNDLE" \
   "s3://${B2_BUCKET}/${B2_PREFIX}bundle.yaml" \
   --endpoint-url "$ENDPOINT_URL" \

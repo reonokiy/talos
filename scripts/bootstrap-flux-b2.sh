@@ -2,12 +2,6 @@
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-if [[ -f "$ROOT/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$ROOT/.env"
-  set +a
-fi
 : "${B2_BUCKET:?set B2_BUCKET}"
 : "${B2_ENDPOINT:?set B2_ENDPOINT, without https://}"
 : "${B2_REGION:?set B2_REGION, e.g. eu-central-003}"
@@ -16,16 +10,20 @@ fi
 : "${B2_READ_APPLICATION_KEY:?set the read-only B2 application key}"
 
 B2_PREFIX="${B2_PREFIX%/}/"
+READER_KEY_ID=$B2_READ_KEY_ID
+READER_APPLICATION_KEY=$B2_READ_APPLICATION_KEY
+unset B2_READ_KEY_ID B2_READ_APPLICATION_KEY
 
 command -v flux >/dev/null
 command -v kubectl >/dev/null
+command -v helmfile >/dev/null
 command -v aws >/dev/null
 kubectl cluster-info >/dev/null
 
 # Fail before changing the cluster if the read-only key cannot see the active
 # artifact that Flux is about to consume.
-AWS_ACCESS_KEY_ID="$B2_READ_KEY_ID" \
-AWS_SECRET_ACCESS_KEY="$B2_READ_APPLICATION_KEY" \
+AWS_ACCESS_KEY_ID="$READER_KEY_ID" \
+AWS_SECRET_ACCESS_KEY="$READER_APPLICATION_KEY" \
 AWS_DEFAULT_REGION="$B2_REGION" \
 AWS_REQUEST_CHECKSUM_CALCULATION=when_required \
 AWS_RESPONSE_CHECKSUM_VALIDATION=when_required \
@@ -33,8 +31,8 @@ AWS_RESPONSE_CHECKSUM_VALIDATION=when_required \
     --bucket "$B2_BUCKET" \
     --endpoint-url "https://$B2_ENDPOINT" >/dev/null
 
-AWS_ACCESS_KEY_ID="$B2_READ_KEY_ID" \
-AWS_SECRET_ACCESS_KEY="$B2_READ_APPLICATION_KEY" \
+AWS_ACCESS_KEY_ID="$READER_KEY_ID" \
+AWS_SECRET_ACCESS_KEY="$READER_APPLICATION_KEY" \
 AWS_DEFAULT_REGION="$B2_REGION" \
 AWS_REQUEST_CHECKSUM_CALCULATION=when_required \
 AWS_RESPONSE_CHECKSUM_VALIDATION=when_required \
@@ -44,8 +42,8 @@ AWS_RESPONSE_CHECKSUM_VALIDATION=when_required \
     --max-keys 1 \
     --endpoint-url "https://$B2_ENDPOINT" >/dev/null
 
-AWS_ACCESS_KEY_ID="$B2_READ_KEY_ID" \
-AWS_SECRET_ACCESS_KEY="$B2_READ_APPLICATION_KEY" \
+AWS_ACCESS_KEY_ID="$READER_KEY_ID" \
+AWS_SECRET_ACCESS_KEY="$READER_APPLICATION_KEY" \
 AWS_DEFAULT_REGION="$B2_REGION" \
 AWS_REQUEST_CHECKSUM_CALCULATION=when_required \
 AWS_RESPONSE_CHECKSUM_VALIDATION=when_required \
@@ -55,13 +53,12 @@ AWS_RESPONSE_CHECKSUM_VALIDATION=when_required \
     --endpoint-url "https://$B2_ENDPOINT" >/dev/null
 
 flux check --pre
-flux install \
-  --components=source-controller,kustomize-controller,helm-controller
+helmfile --file "$ROOT/bootstrap/helmfile.yaml.gotmpl" \
+  --selector phase=flux sync
 
-kubectl -n flux-system create secret generic b2-flux-reader \
-  --from-literal=accesskey="$B2_READ_KEY_ID" \
-  --from-literal=secretkey="$B2_READ_APPLICATION_KEY" \
-  --dry-run=client -o yaml | kubectl apply -f -
+B2_READ_KEY_ID="$READER_KEY_ID" \
+B2_READ_APPLICATION_KEY="$READER_APPLICATION_KEY" \
+  "$ROOT/scripts/sync-flux-b2-secret.sh"
 
 B2_KUSTOMIZE_PATH="./${B2_PREFIX%/}"
 export B2_BUCKET B2_ENDPOINT B2_REGION B2_PREFIX B2_KUSTOMIZE_PATH

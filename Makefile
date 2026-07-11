@@ -1,29 +1,34 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: check render publish-b2 rollback-b2 configure-github bootstrap-cilium bootstrap-flux status
+.PHONY: check validate render publish-b2 rollback-b2 configure-github bootstrap-cilium bootstrap-flux sync-flux-secret status
 
 check:
-	./scripts/check.sh
+	mise run check
+
+validate:
+	mise run validate
 
 render:
-	./scripts/render.sh
+	mise run render
 
 publish-b2:
-	./scripts/publish-b2.sh
+	mise run publish-b2
 
 rollback-b2:
 	@test -n "$(RELEASE_ID)" || { echo "set RELEASE_ID=<git-sha>" >&2; exit 1; }
-	./scripts/rollback-b2.sh "$(RELEASE_ID)"
+	mise run rollback-b2 "$(RELEASE_ID)"
 
 configure-github:
-	./scripts/configure-github.sh
+	mise run configure-github
 
 bootstrap-cilium:
-	./scripts/bootstrap-cilium.sh
+	mise run bootstrap-cilium
 
 bootstrap-flux:
-	./scripts/bootstrap-flux-b2.sh
+	mise run bootstrap-flux
+
+sync-flux-secret:
+	mise run sync-flux-secret
 
 status:
-	kubectl get nodes
-	flux get all -A
+	mise run status

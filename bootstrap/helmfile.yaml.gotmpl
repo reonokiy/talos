@@ -1,0 +1,31 @@
+helmDefaults:
+  atomic: true
+  cleanupOnFail: true
+  createNamespace: true
+  wait: true
+  timeout: 600
+
+repositories:
+  - name: fluxcd-community
+    url: https://fluxcd-community.github.io/helm-charts
+
+releases:
+  # Talos starts without a CNI or kube-proxy. Apply this release first so the
+  # nodes become Ready before installing controllers that schedule as Pods.
+  - name: cilium
+    namespace: kube-system
+    chart: {{ env "BOOTSTRAP_CILIUM_CHART" | default "oci://quay.io/cilium/charts/cilium" | quote }}
+    version: 1.19.5
+    labels:
+      phase: cni
+    values:
+      - ../infrastructure/cilium/values.yaml
+
+  - name: flux2
+    namespace: flux-system
+    chart: fluxcd-community/flux2
+    version: 2.18.4
+    labels:
+      phase: flux
+    values:
+      - flux-values.yaml

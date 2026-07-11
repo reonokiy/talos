@@ -1,6 +1,7 @@
 [tools]
 kubectl = "1.36.2"
 helm = "4.2.2"
+helmfile = "1.2.2"
 flux2 = "2.9.1"
 talosctl = "1.13.6"
 omnictl = "1.9.1"
@@ -9,3 +10,63 @@ cosign = "3.1.1"
 shellcheck = "0.11.0"
 actionlint = "1.7.12"
 cilium-cli = "0.19.5"
+kubelogin = "1.36.2"
+fnox = "1.30.0"
+op = "2.34.1"
+gh = "2.96.0"
+
+[tasks.check]
+description = "Render the production bundle and template the pinned Cilium chart"
+run = "./scripts/check.sh"
+
+[tasks.lint]
+description = "Lint shell scripts and GitHub Actions workflows"
+run = [
+  "shellcheck scripts/*.sh",
+  "actionlint .github/workflows/*.yaml",
+  "./scripts/check-ci-boundary.sh",
+]
+
+[tasks.validate]
+description = "Run all repository validation"
+depends = ["check", "lint"]
+
+[tasks.render]
+description = "Render the single production bundle"
+run = "./scripts/render.sh"
+
+[tasks.publish-b2]
+description = "Load the B2 publisher from 1Password and publish the bundle"
+run = "fnox --no-daemon --profile publisher exec --no-defaults -- ./scripts/publish-b2.sh"
+
+[tasks.publish-b2-ci]
+description = "Publish using B2 values already injected by GitHub Environment"
+run = "./scripts/publish-b2.sh"
+
+[tasks.bootstrap-cilium]
+description = "Apply the declarative Cilium bootstrap release"
+run = "./scripts/bootstrap-cilium.sh"
+
+[tasks.bootstrap-flux]
+description = "Apply the declarative Flux release and B2 source"
+run = "fnox --no-daemon --profile flux-bootstrap exec --no-defaults -- ./scripts/bootstrap-flux-b2.sh"
+
+[tasks.sync-flux-secret]
+description = "Reload the prefix-scoped Flux B2 reader from 1Password"
+run = "fnox --no-daemon --profile flux-bootstrap exec --no-defaults -- ./scripts/sync-flux-b2-secret.sh"
+
+[tasks.configure-github]
+description = "Load the publisher from 1Password into GitHub Environment"
+run = "fnox --no-daemon --profile publisher exec --no-defaults -- ./scripts/configure-github.sh"
+
+[tasks.rollback-b2]
+description = "Restore a versioned B2 release; pass the release Git SHA as an argument"
+run = "fnox --no-daemon --profile rollback exec --no-defaults -- ./scripts/rollback-b2.sh"
+
+[tasks.status]
+description = "Show Kubernetes, Flux and Cilium state"
+run = [
+  "kubectl get nodes",
+  "flux get all -A",
+  "cilium status --wait --interactive=false --wait-duration 1m --output summary",
+]

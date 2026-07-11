@@ -1,0 +1,48 @@
+#:schema https://fnox.jdx.dev/schema.json
+
+# Secrets are resolved only for `fnox exec` subprocesses and never injected
+# into the ordinary interactive shell.
+if_missing = "error"
+env = "exec"
+
+# Local operators use this vault for publishing and for provisioning GitHub
+# Environment. GitHub Actions itself does not connect to 1Password.
+[providers.op_publisher]
+type = "1password"
+vault = "Talos GitOps Publisher"
+daemon_cache = false
+
+# Personal operators use this vault to bootstrap/rotate the cluster reader and
+# to perform an offline recovery.
+[providers.op_runtime]
+type = "1password"
+vault = "Talos GitOps Runtime"
+daemon_cache = false
+
+[profiles.publisher.secrets]
+B2_ENDPOINT = { provider = "op_publisher", value = "B2 Publisher/endpoint"}
+B2_REGION = { provider = "op_publisher", value = "B2 Publisher/region", daemon_cache = false }
+B2_BUCKET = { provider = "op_publisher", value = "B2 Publisher/bucket", daemon_cache = false }
+B2_PREFIX = { provider = "op_publisher", value = "B2 Publisher/current-prefix", daemon_cache = false }
+B2_ARCHIVE_PREFIX = { provider = "op_publisher", value = "B2 Publisher/releases-prefix", daemon_cache = false }
+AWS_ACCESS_KEY_ID = { provider = "op_publisher", value = "B2 Publisher/access-key-id", daemon_cache = false }
+AWS_SECRET_ACCESS_KEY = { provider = "op_publisher", value = "B2 Publisher/secret-access-key", daemon_cache = false }
+
+[profiles.flux-bootstrap.secrets]
+B2_ENDPOINT = { provider = "op_publisher", value = "B2 Publisher/endpoint", daemon_cache = false }
+B2_REGION = { provider = "op_publisher", value = "B2 Publisher/region", daemon_cache = false }
+B2_BUCKET = { provider = "op_publisher", value = "B2 Publisher/bucket", daemon_cache = false }
+B2_PREFIX = { provider = "op_publisher", value = "B2 Publisher/current-prefix", daemon_cache = false }
+B2_READ_KEY_ID = { provider = "op_runtime", value = "B2 Runtime/reader-key-id", daemon_cache = false }
+B2_READ_APPLICATION_KEY = { provider = "op_runtime", value = "B2 Runtime/reader-application-key", daemon_cache = false }
+
+[profiles.rollback.secrets]
+B2_ENDPOINT = { provider = "op_publisher", value = "B2 Publisher/endpoint", daemon_cache = false }
+B2_REGION = { provider = "op_publisher", value = "B2 Publisher/region", daemon_cache = false }
+B2_BUCKET = { provider = "op_publisher", value = "B2 Publisher/bucket", daemon_cache = false }
+B2_PREFIX = { provider = "op_publisher", value = "B2 Publisher/current-prefix", daemon_cache = false }
+B2_ARCHIVE_PREFIX = { provider = "op_publisher", value = "B2 Publisher/releases-prefix", daemon_cache = false }
+AWS_ACCESS_KEY_ID = { provider = "op_publisher", value = "B2 Publisher/access-key-id", daemon_cache = false }
+AWS_SECRET_ACCESS_KEY = { provider = "op_publisher", value = "B2 Publisher/secret-access-key", daemon_cache = false }
+B2_RECOVERY_READ_KEY_ID = { provider = "op_runtime", value = "B2 Runtime/recovery-key-id", daemon_cache = false }
+B2_RECOVERY_READ_APPLICATION_KEY = { provider = "op_runtime", value = "B2 Runtime/recovery-application-key", daemon_cache = false }

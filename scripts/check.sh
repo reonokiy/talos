@@ -9,4 +9,6 @@ helm template cilium oci://quay.io/cilium/charts/cilium \
   --namespace kube-system \
   --values "$ROOT/infrastructure/cilium/values.yaml" >/dev/null
 
-echo "Kustomize render and Helm template checks passed."
+helmfile --file "$ROOT/bootstrap/helmfile.yaml.gotmpl" list --skip-charts >/dev/null
+
+echo "Kustomize, Helm and Helmfile checks passed."

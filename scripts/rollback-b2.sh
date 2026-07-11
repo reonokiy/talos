@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-if [[ -f "$ROOT/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$ROOT/.env"
-  set +a
-fi
-
 RELEASE_ID=${1:?usage: rollback-b2.sh <release-id>}
 : "${B2_ENDPOINT:?set B2_ENDPOINT, without https://}"
 : "${B2_REGION:?set B2_REGION}"
@@ -24,6 +16,10 @@ B2_PREFIX="${B2_PREFIX%/}/"
 B2_ARCHIVE_PREFIX="${B2_ARCHIVE_PREFIX%/}/"
 PUBLISH_KEY_ID=$AWS_ACCESS_KEY_ID
 PUBLISH_APPLICATION_KEY=$AWS_SECRET_ACCESS_KEY
+RECOVERY_KEY_ID=$B2_RECOVERY_READ_KEY_ID
+RECOVERY_APPLICATION_KEY=$B2_RECOVERY_READ_APPLICATION_KEY
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
+unset B2_RECOVERY_READ_KEY_ID B2_RECOVERY_READ_APPLICATION_KEY
 ENDPOINT_URL="https://$B2_ENDPOINT"
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
@@ -33,8 +29,8 @@ export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
 
 # CopyObject would require one credential with both read and write access.
 # Download and upload separately to keep the long-lived publisher write-only.
-AWS_ACCESS_KEY_ID="$B2_RECOVERY_READ_KEY_ID" \
-AWS_SECRET_ACCESS_KEY="$B2_RECOVERY_READ_APPLICATION_KEY" \
+AWS_ACCESS_KEY_ID="$RECOVERY_KEY_ID" \
+AWS_SECRET_ACCESS_KEY="$RECOVERY_APPLICATION_KEY" \
 AWS_DEFAULT_REGION="$B2_REGION" \
   aws s3 cp \
     "s3://${B2_BUCKET}/${B2_ARCHIVE_PREFIX}${RELEASE_ID}/bundle.yaml" \

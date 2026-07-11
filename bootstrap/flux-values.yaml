@@ -1,0 +1,9 @@
+installCRDs: true
+logLevel: info
+watchAllNamespaces: true
+
+# Image automation is not part of this B2-backed reconciliation design.
+imageAutomationController:
+  create: false
+imageReflectionController:
+  create: false
