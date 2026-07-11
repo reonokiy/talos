@@ -1,0 +1,43 @@
+name: Publish Flux bundle to B2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-production
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
+        with:
+          version: v1.36.2
+
+      - name: Set up Helm
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a # v4
+        with:
+          version: v4.2.2
+
+      - name: Publish bundle and immutable audit copy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.B2_WRITE_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_WRITE_APPLICATION_KEY }}
+          AWS_DEFAULT_REGION: ${{ vars.B2_REGION }}
+          B2_ENDPOINT: ${{ vars.B2_ENDPOINT }}
+          B2_BUCKET: ${{ vars.B2_BUCKET }}
+          B2_PREFIX: ${{ vars.B2_PREFIX }}
+          B2_ARCHIVE_PREFIX: ${{ vars.B2_ARCHIVE_PREFIX }}
+          RELEASE_ID: ${{ github.sha }}
+        run: |
+          ./scripts/publish-b2.sh

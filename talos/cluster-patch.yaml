@@ -1,0 +1,29 @@
+# Apply this as an Omni cluster-level Config Patch before creating the cluster.
+# Cluster scope ensures any workers added later inherit KubeSpan and resolver
+# policy as well. The control-plane-only scheduling field is harmless on workers.
+cluster:
+  allowSchedulingOnControlPlanes: true
+  network:
+    cni:
+      name: none
+  proxy:
+    disabled: true
+---
+# Talos 1.13's document-style KubeSpan configuration. The former
+# machine.network.kubespan field is deprecated.
+apiVersion: v1alpha1
+kind: KubeSpanConfig
+enabled: true
+advertiseKubernetesNetworks: false
+---
+# Netcup supplies/derives the hotsrv.de search domain. Its wildcard DNS record
+# makes Kubernetes' default ndots:5 resolve e.g. quay.io as quay.io.hotsrv.de.
+# Override both platform search domains and resolvers at the Talos layer.
+apiVersion: v1alpha1
+kind: ResolverConfig
+nameservers:
+  - address: 1.1.1.1
+  - address: 1.0.0.1
+searchDomains:
+  domains: []
+  disableDefault: true

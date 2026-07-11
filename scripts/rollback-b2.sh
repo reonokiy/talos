@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+if [[ -f "$ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
+fi
+
+RELEASE_ID=${1:?usage: rollback-b2.sh <release-id>}
+: "${B2_ENDPOINT:?set B2_ENDPOINT, without https://}"
+: "${B2_REGION:?set B2_REGION}"
+: "${B2_BUCKET:?set B2_BUCKET}"
+: "${B2_PREFIX:=clusters/production/current/}"
+: "${B2_ARCHIVE_PREFIX:=clusters/production/releases/}"
+: "${AWS_ACCESS_KEY_ID:?set the write-only B2 publisher key ID}"
+: "${AWS_SECRET_ACCESS_KEY:?set the write-only B2 publisher application key}"
+: "${B2_RECOVERY_READ_KEY_ID:?set the offline archive read key ID}"
+: "${B2_RECOVERY_READ_APPLICATION_KEY:?set the offline archive read application key}"
+
+B2_PREFIX="${B2_PREFIX%/}/"
+B2_ARCHIVE_PREFIX="${B2_ARCHIVE_PREFIX%/}/"
+PUBLISH_KEY_ID=$AWS_ACCESS_KEY_ID
+PUBLISH_APPLICATION_KEY=$AWS_SECRET_ACCESS_KEY
+ENDPOINT_URL="https://$B2_ENDPOINT"
+TMP=$(mktemp)
+trap 'rm -f "$TMP"' EXIT
+
+export AWS_REQUEST_CHECKSUM_CALCULATION=when_required
+export AWS_RESPONSE_CHECKSUM_VALIDATION=when_required
+
+# CopyObject would require one credential with both read and write access.
+# Download and upload separately to keep the long-lived publisher write-only.
+AWS_ACCESS_KEY_ID="$B2_RECOVERY_READ_KEY_ID" \
+AWS_SECRET_ACCESS_KEY="$B2_RECOVERY_READ_APPLICATION_KEY" \
+AWS_DEFAULT_REGION="$B2_REGION" \
+  aws s3 cp \
+    "s3://${B2_BUCKET}/${B2_ARCHIVE_PREFIX}${RELEASE_ID}/bundle.yaml" \
+    "$TMP" \
+    --endpoint-url "$ENDPOINT_URL"
+
+test -s "$TMP"
+BUNDLE_SHA=$(sha256sum "$TMP" | cut -d' ' -f1)
+
+AWS_ACCESS_KEY_ID="$PUBLISH_KEY_ID" \
+AWS_SECRET_ACCESS_KEY="$PUBLISH_APPLICATION_KEY" \
+AWS_DEFAULT_REGION="$B2_REGION" \
+  aws s3 cp \
+    "$TMP" \
+    "s3://${B2_BUCKET}/${B2_PREFIX}bundle.yaml" \
+    --endpoint-url "$ENDPOINT_URL" \
+    --content-type application/yaml \
+    --metadata "sha256=${BUNDLE_SHA},git-sha=${RELEASE_ID},rollback=true"
+
+echo "Restored release $RELEASE_ID ($BUNDLE_SHA) to s3://$B2_BUCKET/${B2_PREFIX}bundle.yaml"

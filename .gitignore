@@ -1,0 +1,4 @@
+.build/
+.env
+*.kubeconfig
+*.secret.yaml

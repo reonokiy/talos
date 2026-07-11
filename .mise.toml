@@ -1,0 +1,11 @@
+[tools]
+kubectl = "1.36.2"
+helm = "4.2.2"
+flux2 = "2.9.1"
+talosctl = "1.13.6"
+omnictl = "1.9.1"
+aws-cli = "2.35.20"
+cosign = "3.1.1"
+shellcheck = "0.11.0"
+actionlint = "1.7.12"
+cilium-cli = "0.19.5"

@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+  annotations:
+    # Talos creates this ConfigMap during bootstrap. Flux intentionally owns the
+    # Corefile afterwards, but must never prune DNS if this component is removed.
+    kustomize.toolkit.fluxcd.io/force: enabled
+    kustomize.toolkit.fluxcd.io/prune: disabled
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health {
+            lameduck 5s
+        }
+        ready
+        log . {
+            class error
+        }
+        prometheus :9153
+
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+            pods insecure
+            fallthrough in-addr.arpa ip6.arpa
+            ttl 30
+        }
+
+        # Encrypt recursive DNS traffic leaving the cluster with DNS-over-TLS.
+        # Both upstreams use the same TLS identity, as required by CoreDNS.
+        forward . tls://1.1.1.1 tls://1.0.0.1 {
+            tls_servername cloudflare-dns.com
+            health_check 5s
+            max_concurrent 1000
+        }
+
+        cache 30 {
+            disable success cluster.local
+            disable denial cluster.local
+        }
+        loop
+        reload
+        loadbalance
+    }
