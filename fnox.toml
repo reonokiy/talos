@@ -14,7 +14,7 @@ type = "1password"
 # to create the bucket and rotate scoped application keys. OP_ACCOUNT selects
 # the local Desktop account; replace its placeholder or override it at runtime.
 [profiles.b2-terraform.secrets]
-OP_ACCOUNT = { provider = "op", value = "op://Personal/1Password Account/email" }
+OP_SERVICE_ACCOUNT = { provider = "op", value = "op://talos.nokiy.net/service-account/credential" }
 TF_CLOUD_ORGANIZATION = { default = "reonokiy" }
 TF_WORKSPACE = { default = "talos-b2" }
 TF_TOKEN_app_terraform_io = { provider = "op", value = "op://dev/terraform/API_TOKEN"}
