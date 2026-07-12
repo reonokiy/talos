@@ -1,26 +1,20 @@
 # Application secrets
 
-External Secrets is intentionally namespaced. Each application directory that
-needs secrets must declare its own `SecretStore`; do not add a
-`ClusterSecretStore`, `ClusterExternalSecret`, `PushSecret`, or
-`ClusterPushSecret`.
+External Secrets uses one centrally managed `ClusterSecretStore` backed by the
+`talos.nokiy.net` 1Password vault. Its Service Account token exists only in the
+`external-secrets` namespace. Application directories must not declare
+`SecretStore`, `ClusterSecretStore`, `ClusterExternalSecret`, `PushSecret`, or
+`ClusterPushSecret` resources.
 
-The only supported provider is the `talos.nokiy.net` 1Password vault:
+Label each namespace that is allowed to use the central Store:
 
 ```yaml
-apiVersion: external-secrets.io/v1
-kind: SecretStore
+apiVersion: v1
+kind: Namespace
 metadata:
-  name: onepassword
-  namespace: example
-spec:
-  provider:
-    onepasswordSDK:
-      vault: talos.nokiy.net
-      auth:
-        serviceAccountSecretRef:
-          name: onepassword-service-account
-          key: token
+  name: example
+  labels:
+    secrets.nokiy.net/onepassword: enabled
 ```
 
 Every item title must start with its Kubernetes namespace and `/`:
@@ -45,7 +39,7 @@ metadata:
 spec:
   refreshInterval: 1h
   secretStoreRef:
-    kind: SecretStore
+    kind: ClusterSecretStore
     name: onepassword
   target:
     name: example
@@ -57,15 +51,15 @@ spec:
         key: example/database/password
 ```
 
-After Flux creates a new application namespace, provision its bootstrap token
-without exposing it:
+Provision the central bootstrap token once, after the `external-secrets`
+namespace exists:
 
 ```console
-mise run sync-external-secrets-secret -- example
+mise run sync-external-secrets-secret
 ```
 
-The Service Account is vault-scoped, so every application Store can read any
-item in `talos.nokiy.net`. Namespaced Stores prevent cross-namespace Store
-references, while a `ValidatingAdmissionPolicy` enforces item-title prefixes at
-the Kubernetes API. These controls prevent configuration-level cross-namespace
-access but cannot provide cryptographic item isolation inside a single vault.
+The Store condition admits only explicitly labeled namespaces, while a
+`ValidatingAdmissionPolicy` enforces item-title prefixes at the Kubernetes API.
+The Service Account remains vault-scoped, so these controls prevent
+configuration-level cross-namespace access but cannot provide cryptographic
+item isolation inside a single vault.

@@ -59,7 +59,7 @@ description = "Reload the prefix-scoped Flux B2 reader from 1Password"
 run = "fnox --no-daemon --profile flux-bootstrap exec --no-defaults -- ./scripts/sync-flux-b2-secret.sh"
 
 [tasks.sync-external-secrets-secret]
-description = "Sync the 1Password Service Account token into one or more application namespaces"
+description = "Sync the 1Password Service Account token into the external-secrets namespace"
 run = "fnox --no-daemon --profile external-secrets-bootstrap exec --no-defaults -- ./scripts/sync-external-secrets-secret.sh"
 
 [tasks.configure-github]

@@ -106,18 +106,23 @@ cluster-network
 ### Application secret management
 
 External Secrets Operator reads application credentials from the single
-1Password vault `talos.nokiy.net`. The operator is cluster infrastructure, but
-every application owns a namespaced `SecretStore` in its own Kustomize
-directory. Follow `clusters/production/apps/README.md` when onboarding an
-application.
+1Password vault `talos.nokiy.net`. The operator and the single
+`ClusterSecretStore/onepassword` are cluster infrastructure. Applications only
+own namespaced `ExternalSecret` resources. Follow
+`clusters/production/apps/README.md` when onboarding an application.
 
-- Use only `external-secrets.io/v1` namespaced `SecretStore` and
-  `ExternalSecret` resources. Do not create `ClusterSecretStore`,
-  `ClusterExternalSecret`, `PushSecret`, or `ClusterPushSecret`; their CRDs and
-  reconciliation paths are intentionally disabled.
-- Every application `SecretStore` must use `provider.onepasswordSDK`, vault
-  `talos.nokiy.net`, and its namespace-local Secret
-  `onepassword-service-account` key `token`.
+- Applications may create only `external-secrets.io/v1` `ExternalSecret`
+  resources. Do not put `SecretStore`, `ClusterSecretStore`,
+  `ClusterExternalSecret`, `PushSecret`, or `ClusterPushSecret` in an
+  application directory.
+- The infrastructure-owned Store uses `provider.onepasswordSDK`, vault
+  `talos.nokiy.net`, and the single Secret
+  `external-secrets/onepassword-service-account` key `token`. Never copy that
+  Secret into application namespaces.
+- An application namespace must carry label
+  `secrets.nokiy.net/onepassword: enabled` before it can reference the central
+  Store. Every `ExternalSecret` must set `secretStoreRef.kind` to
+  `ClusterSecretStore` and `secretStoreRef.name` to `onepassword`.
 - Name each 1Password item `<namespace>/<application-or-purpose>`. Every
   `spec.data[].remoteRef.key` must therefore have the form
   `<namespace>/<item>/<field>` and start with the `ExternalSecret` namespace
@@ -128,7 +133,7 @@ application.
   Prefer `deletionPolicy: Retain` unless an application has a deliberate and
   reviewed reason to delete the Secret with its external source.
 - Do not grant application ServiceAccounts permission to create or update
-  `SecretStore` or `ExternalSecret`. The chart does not aggregate these
+  `ClusterSecretStore` or `ExternalSecret`. The chart does not aggregate these
   permissions into the standard `view` or `edit` roles; Flux and cluster
   administrators own the declarations.
 - The Kubernetes `ValidatingAdmissionPolicy` resources in
@@ -136,13 +141,13 @@ application.
   provider, vault, bootstrap Secret, ownership policy, explicit mappings, and
   namespace item prefix at admission time. Keep
   `scripts/check-external-secrets-policy.sh` aligned with those runtime rules.
-- After Flux creates a new application namespace, provision its bootstrap token
-  with `mise run sync-external-secrets-secret -- <namespace>`. This is an
-  out-of-band bootstrap operation like the Flux B2 reader. Never commit the
-  token or render it into B2.
+- Provision the central bootstrap token once with
+  `mise run sync-external-secrets-secret` after the `external-secrets` namespace
+  exists. This is an out-of-band bootstrap operation like the Flux B2 reader.
+  Never commit the token, render it into B2, or replicate it to applications.
 - One vault cannot provide cryptographic item-level isolation: the Service
-  Account token can read every item in `talos.nokiy.net`. Namespaced Stores,
-  RBAC, item prefixes, and admission policy prevent configuration-level
+  Account token can read every item in `talos.nokiy.net`. Store namespace
+  conditions, RBAC, item prefixes, and admission policy prevent configuration-level
   cross-namespace access, but they do not contain a compromised ESO controller
   or token. Do not describe this design as a hard 1Password authorization
   boundary.

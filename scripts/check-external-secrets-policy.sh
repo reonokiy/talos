@@ -15,9 +15,9 @@ if ((${#YAML_FILES[@]} == 0)); then
 fi
 
 if grep -En \
-  '^[[:space:]]*kind:[[:space:]]*(ClusterSecretStore|ClusterExternalSecret|PushSecret|ClusterPushSecret)[[:space:]]*$' \
+  '^[[:space:]]*kind:[[:space:]]*(SecretStore|ClusterSecretStore|ClusterExternalSecret|PushSecret|ClusterPushSecret)[[:space:]]*$' \
   "${YAML_FILES[@]}"; then
-  echo "Applications may only use namespaced SecretStore and read-only ExternalSecret resources." >&2
+  echo "Applications may only use read-only ExternalSecret resources with the central ClusterSecretStore." >&2
   exit 1
 fi
 
@@ -27,27 +27,13 @@ for file in "${YAML_FILES[@]}"; do
     exit 1
   }
 
-  while IFS=$'\t' read -r name namespace vault; do
-    [[ -n $namespace ]] || {
-      echo "$file: SecretStore $name must declare its application namespace." >&2
-      exit 1
-    }
-    [[ $vault == "talos.nokiy.net" ]] || {
-      echo "$file: SecretStore $namespace/$name must use only the talos.nokiy.net vault." >&2
-      exit 1
-    }
-  done < <(
-    printf '%s\n' "$documents" |
-      jq -r 'select(.kind == "SecretStore") | [.metadata.name // "", .metadata.namespace // "", .spec.provider.onepasswordSDK.vault // ""] | @tsv'
-  )
-
-  while IFS=$'\t' read -r name namespace creation_policy store_kind data_from_count key; do
+  while IFS=$'\t' read -r name namespace creation_policy store_kind store_name data_from_count key; do
     [[ $creation_policy == "Owner" ]] || {
       echo "$file: ExternalSecret $namespace/$name target must use creationPolicy: Owner." >&2
       exit 1
     }
-    [[ $store_kind == "SecretStore" ]] || {
-      echo "$file: ExternalSecret $namespace/$name must reference a namespaced SecretStore." >&2
+    [[ $store_kind == "ClusterSecretStore" && $store_name == "onepassword" ]] || {
+      echo "$file: ExternalSecret $namespace/$name must reference ClusterSecretStore/onepassword." >&2
       exit 1
     }
     [[ $data_from_count == "0" ]] || {
@@ -71,6 +57,7 @@ for file in "${YAML_FILES[@]}"; do
           $secret.metadata.namespace // "",
           $secret.spec.target.creationPolicy // "",
           $secret.spec.secretStoreRef.kind // "",
+          $secret.spec.secretStoreRef.name // "",
           (($secret.spec.dataFrom // []) | length | tostring),
           $entry.remoteRef.key // ""
         ] | @tsv
