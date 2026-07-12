@@ -99,14 +99,14 @@ cluster-network
 - The secrets layer uses `deletionPolicy: Orphan`; loss of a release source must
   not remove External Secrets CRDs, admission policy, or the controller while
   applications still depend on generated Secrets.
-- External Secrets is currently in a staged CRD ownership repair. The
-  `external-secrets` controller HelmRelease is intentionally suspended with
-  `installCRDs: false`, while `external-secrets-crds` restores the CRDs and
-  records `helm.sh/resource-policy: keep` in its release manifest. Do not resume
-  the controller, remove the CRD release, or change these flags in one step.
-  First verify every required CRD is Established and carries the keep policy;
-  ownership transfer and CRD-release retirement require separate reviewed
-  releases with live-state checks between them.
+- External Secrets is currently in stage 2 of a CRD ownership repair. The
+  `external-secrets-crds` HelmRelease is suspended after restoring every CRD
+  and recording `helm.sh/resource-policy: keep` in release revision 2. The
+  original `external-secrets` release is active with `installCRDs: true` and
+  takes ownership of those established CRDs. Do not remove the suspended CRD
+  release until every CRD reports the controller release as owner and the
+  controller rollout is Ready; retirement requires a separate reviewed release
+  and live-state verification.
 - Put an application in its own Kustomize directory under `apps` when it needs
   an independent failure or pruning boundary. Avoid dependencies between normal
   applications; move shared controllers and prerequisites into infrastructure.
