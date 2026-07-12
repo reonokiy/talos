@@ -27,7 +27,7 @@ jobs:
         with:
           version: 2026.7.5
           install: true
-          install_args: --locked kubectl helm aws-cli
+          install_args: --locked kubectl helm helmfile aws-cli
           cache: true
 
       - name: Publish bundle and versioned audit copy
