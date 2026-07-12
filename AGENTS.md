@@ -99,6 +99,12 @@ cluster-network
 - The secrets layer uses `deletionPolicy: Orphan`; loss of a release source must
   not remove External Secrets CRDs, admission policy, or the controller while
   applications still depend on generated Secrets.
+- External Secrets CRDs are owned by the `external-secrets-crds` HelmRelease.
+  The `external-secrets` controller HelmRelease has a Flux `dependsOn` edge to
+  that release and must keep `installCRDs: false`. This ordering is required
+  when enabling a previously absent CRD: Helm upgrades do not install a newly
+  enabled CRD early enough to map a custom resource rendered by the same
+  release.
 - Put an application in its own Kustomize directory under `apps` when it needs
   an independent failure or pruning boundary. Avoid dependencies between normal
   applications; move shared controllers and prerequisites into infrastructure.
