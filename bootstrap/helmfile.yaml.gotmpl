@@ -25,6 +25,10 @@ releases:
     namespace: flux-system
     chart: fluxcd-community/flux2
     version: 2.18.4
+    # Keep a failed bootstrap in place for inspection. Atomic rollback can
+    # remove Flux CRDs and controllers together with existing custom resources.
+    atomic: false
+    cleanupOnFail: false
     labels:
       phase: flux
     values:

@@ -2,6 +2,13 @@ installCRDs: true
 logLevel: info
 watchAllNamespaces: true
 
+# Sigstore's keyless verifier caches its TUF trust root under $HOME/.sigstore.
+# The controller root filesystem is read-only, while /tmp is writable.
+sourceController:
+  extraEnv:
+    - name: HOME
+      value: /tmp
+
 # Image automation is not part of this B2-backed reconciliation design.
 imageAutomationController:
   create: false

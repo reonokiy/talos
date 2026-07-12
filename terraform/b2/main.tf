@@ -41,8 +41,7 @@ resource "b2_application_key" "flux_reader" {
     "listFiles",
     "readFiles",
   ]
-  bucket_ids  = [b2_bucket.flux.bucket_id]
-  name_prefix = local.current_prefix
+  bucket_ids = [b2_bucket.flux.bucket_id]
 }
 
 resource "b2_application_key" "recovery_reader" {

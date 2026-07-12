@@ -152,7 +152,7 @@ contains those values, so workspace access must be restricted; see
 | Key | Prefix restriction | Capabilities | Stored in |
 |---|---|---|---|
 | Publisher | `clusters/production/` | `writeFiles` | 1Password, then GitHub Environment |
-| Flux reader | `clusters/production/current/` | `listFiles`, `readFiles`, plus “List All Bucket Names” | 1Password, then Kubernetes Secret |
+| Flux reader | Entire `talos-nokiy-net` bucket | `listFiles`, `readFiles`, plus “List All Bucket Names” | 1Password, then Kubernetes Secret |
 | Recovery reader | `clusters/production/releases/` | `readFiles` | 1Password only |
 
 Terraform keeps the trailing slash in every key restriction. Flux's generic S3
@@ -224,7 +224,16 @@ mise run bootstrap-flux
 The task uses the `flux-bootstrap` fnox profile. It preflights B2 HEAD/LIST/GET,
 applies the Flux release declared by Helmfile, and creates
 `flux-system/b2-flux-reader` without putting secret values on disk or in argv.
-Only that prefix-scoped B2 reader is persisted in Kubernetes.
+Only that bucket-scoped, read-only B2 reader is persisted in Kubernetes.
+
+Flux source-controller probes the bucket-root `.sourceignore` object even when
+the Bucket source has a narrower `spec.prefix`. The reader is therefore scoped
+to the complete bucket, but remains read-only; reconciliation still lists and
+applies only `clusters/production/current/`.
+
+Flux bootstrap disables Helm's atomic rollback for the controller release. A
+failed install remains available for inspection instead of removing Flux CRDs
+and existing custom resources during automatic cleanup.
 
 Bootstrap ownership is intentionally narrow:
 
