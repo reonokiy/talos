@@ -63,3 +63,24 @@ The Store condition admits only explicitly labeled namespaces, while a
 The Service Account remains vault-scoped, so these controls prevent
 configuration-level cross-namespace access but cannot provide cryptographic
 item isolation inside a single vault.
+
+## Public DNS opt-in
+
+ExternalDNS watches only Ingress resources explicitly labeled for publication.
+Every public Ingress must select Traefik and opt in:
+
+```yaml
+metadata:
+  labels:
+    dns.nokiy.net/publish: enabled
+  annotations:
+    external-dns.alpha.kubernetes.io/ttl: "60"
+spec:
+  ingressClassName: traefik
+```
+
+ExternalDNS publishes the addresses that Traefik copies from its Cilium Node
+IPAM LoadBalancer Service. Do not hard-code node addresses in application
+annotations. The 60-second DNS TTL bounds normal resolver caching during node
+failover. Cloudflare proxying is disabled by default and requires a separate
+review because it changes source-IP and forwarded-header trust.

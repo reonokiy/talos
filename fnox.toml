@@ -21,6 +21,16 @@ TF_TOKEN_app_terraform_io = { provider = "op", value = "op://dev/terraform/API_T
 B2_APPLICATION_KEY_ID = { provider = "op", value = "op://dev/b2eu/MASTER_KEY_ID" }
 B2_APPLICATION_KEY = { provider = "op", value = "op://dev/b2eu/MASTER_KEY" }
 
+# Creates the zone-scoped ExternalDNS API Token and writes it to the runtime
+# vault. The bootstrap Cloudflare token remains in dev, outside the vault read
+# by the in-cluster 1Password Service Account.
+[profiles.cloudflare-terraform.secrets]
+TF_VAR_cloudflare_api_token = { provider = "op", value = "op://dev/cloudflare-terraform-admin/API_TOKEN" }
+TF_VAR_onepassword_service_account_token = { provider = "op", value = "op://talos.nokiy.net/service-account/credential" }
+TF_CLOUD_ORGANIZATION = { default = "reonokiy" }
+TF_WORKSPACE = { default = "talos-cloudflare" }
+TF_TOKEN_app_terraform_io = { provider = "op", value = "op://dev/terraform/API_TOKEN" }
+
 # Publishes the rendered active bundle and versioned release copies to B2.
 # It also provisions the B2 writer in GitHub's production Environment.
 [profiles.publisher.secrets]

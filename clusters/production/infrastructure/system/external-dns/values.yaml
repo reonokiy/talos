@@ -1,0 +1,79 @@
+image:
+  tag: v0.21.0
+
+provider:
+  name: cloudflare
+
+sources:
+  - ingress
+
+policy: sync
+registry: txt
+txtOwnerId: talos-production
+txtPrefix: _externaldns.
+
+domainFilters:
+  - nokiy.net
+
+labelFilter: dns.nokiy.net/publish=enabled
+
+managedRecordTypes:
+  - A
+  - AAAA
+  - CNAME
+
+interval: 1m
+triggerLoopOnEvent: true
+logLevel: info
+logFormat: json
+
+env:
+  - name: CF_API_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: external-dns-cloudflare
+        key: api-token
+  - name: CF_ZONE_ID
+    valueFrom:
+      secretKeyRef:
+        name: external-dns-cloudflare
+        key: zone-id
+
+extraArgs:
+  - --ingress-class=traefik
+  - --zone-id-filter=$(CF_ZONE_ID)
+  - --cloudflare-dns-records-per-page=5000
+  - --cloudflare-record-comment=managed by talos-production external-dns
+
+replicaCount: 1
+deploymentStrategy:
+  type: Recreate
+terminationGracePeriodSeconds: 30
+
+serviceMonitor:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 20m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+securityContext:
+  privileged: false
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  capabilities:
+    drop:
+      - ALL
+
+podSecurityContext:
+  runAsNonRoot: true
+  fsGroup: 65534
+  seccompProfile:
+    type: RuntimeDefault

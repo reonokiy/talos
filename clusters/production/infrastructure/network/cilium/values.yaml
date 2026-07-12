@@ -51,6 +51,12 @@ operator:
 
 rollOutCiliumPods: true
 
+# Publish selected node addresses through LoadBalancer Service status without
+# requiring provider L2 announcements or BGP. The Traefik Service restricts
+# candidates to the three control-plane nodes and uses local endpoints only.
+nodeIPAM:
+  enabled: true
+
 hubble:
   relay:
     enabled: true

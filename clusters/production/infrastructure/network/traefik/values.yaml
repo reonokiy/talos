@@ -1,0 +1,172 @@
+image:
+  tag: v3.7.6
+
+deployment:
+  kind: DaemonSet
+  terminationGracePeriodSeconds: 60
+  minReadySeconds: 10
+  lifecycle:
+    preStop:
+      sleep:
+        seconds: 10
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 0
+
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: traefik
+
+ingressClass:
+  enabled: true
+  isDefaultClass: false
+  name: traefik
+
+providers:
+  kubernetesIngress:
+    enabled: true
+    ingressClass: traefik
+    allowExternalNameServices: false
+    allowEmptyServices: true
+    publishedService:
+      enabled: true
+    strictPrefixMatching: true
+  kubernetesCRD:
+    enabled: false
+  kubernetesGateway:
+    enabled: false
+  file:
+    enabled: true
+    content:
+      tls:
+        options:
+          default:
+            minVersion: VersionTLS12
+            sniStrict: true
+
+gateway:
+  enabled: false
+
+gatewayClass:
+  enabled: false
+
+api:
+  dashboard: false
+  insecure: false
+
+ingressRoute:
+  dashboard:
+    enabled: false
+  healthcheck:
+    enabled: false
+
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+hostNetwork: false
+
+ports:
+  web:
+    forwardedHeaders:
+      trustedIPs: []
+      insecure: false
+    proxyProtocol:
+      trustedIPs: []
+      insecure: false
+    transport:
+      respondingTimeouts:
+        readTimeout: 60s
+        writeTimeout: 0s
+        idleTimeout: 180s
+      lifeCycle:
+        requestAcceptGraceTimeout: 10s
+        graceTimeOut: 45s
+  websecure:
+    http:
+      tls:
+        enabled: true
+    forwardedHeaders:
+      trustedIPs: []
+      insecure: false
+    proxyProtocol:
+      trustedIPs: []
+      insecure: false
+    transport:
+      respondingTimeouts:
+        readTimeout: 60s
+        writeTimeout: 0s
+        idleTimeout: 180s
+      lifeCycle:
+        requestAcceptGraceTimeout: 10s
+        graceTimeOut: 45s
+
+service:
+  annotations:
+    io.cilium.nodeipam/match-node-labels: node-role.kubernetes.io/control-plane
+  spec:
+    type: LoadBalancer
+    loadBalancerClass: io.cilium/node
+    allocateLoadBalancerNodePorts: false
+    externalTrafficPolicy: Local
+    ipFamilyPolicy: SingleStack
+    ipFamilies:
+      - IPv4
+
+log:
+  level: INFO
+  format: json
+
+accessLog:
+  enabled: true
+  format: json
+  bufferingSize: 100
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: drop
+    queryParameters:
+      defaultMode: drop
+
+metrics:
+  addInternals: false
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: false
+    addServicesLabels: true
+    service:
+      enabled: true
+    serviceMonitor:
+      enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+podSecurityContext:
+  runAsGroup: 65532
+  runAsNonRoot: true
+  runAsUser: 65532
+  seccompProfile:
+    type: RuntimeDefault
