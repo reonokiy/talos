@@ -1,7 +1,7 @@
 # Talos + Cilium + Flux + Backblaze B2
 
 This repository bootstraps Cilium on a Talos/Omni cluster, installs Flux
-without a Git source, and lets Flux reconcile one rendered manifest bundle
+without a Git source, and lets Flux reconcile an immutable repository snapshot
 from Backblaze B2's S3-compatible API.
 
 `mise` pins tools and exposes all operator tasks. `fnox` resolves secrets from
@@ -16,7 +16,7 @@ credential, GitHub deploy key, or 1Password token is committed to this source.
                                       ▼
                         GitHub Environment B2 writer
                                       │
-GitHub main ── GitHub Actions ── render one bundle.yaml ── Backblaze B2
+GitHub main ── GitHub Actions ── immutable repository snapshot ── Backblaze B2
                                                                   │
 1Password Runtime vault ── fnox on operator machine               │
                             │                                     │
@@ -29,14 +29,21 @@ GitHub main ── GitHub Actions ── render one bundle.yaml ── Backblaze
 
 GitHub Actions does not connect to 1Password. GitHub Environment holds the B2
 publisher Variables/Secrets provisioned by a local fnox task. The cluster stores
-only the B2 key that can list/read `clusters/production/current/`; it never
+only the bucket-scoped, read-only B2 key required by source-controller; it never
 receives a publisher key or any 1Password authentication material.
 
-`bundle.yaml` is a single S3 `PutObject`, so Flux cannot observe half of a
-multi-file deployment. A versioned audit copy is written to the releases prefix
-first. Both objects carry the Git commit and bundle SHA-256 in object metadata.
-Flux Bucket artifacts retain the complete object key, so the generated Flux
-`Kustomization` uses `./clusters/production/current` as its path.
+Each release mirrors the repository's `clusters/` and `infrastructure/` trees
+under `clusters/production/releases/<git-sha>/`. GitHub Actions uploads that
+immutable snapshot first, then atomically replaces the single
+`clusters/production/current/entrypoint/release.yaml` object. The entrypoint
+pins Flux to the completed release prefix, so it cannot observe a partially
+published multi-file revision.
+
+The entrypoint creates independent `cluster-network`, `cluster-certificates`
+and `cluster-system` Kustomizations over the same immutable Bucket artifact.
+Their dependency chain is network -> certificates -> system. Health, inventory,
+pruning and failure reporting are isolated per layer while all layers advance
+to the same Git commit.
 
 ## 1. Install locked tools
 
@@ -113,19 +120,19 @@ official connectivity test requires host networking, host ports and `NET_RAW`.
 
 ## Encrypted workload DNS
 
-The bundle takes ownership of Talos' bootstrap CoreDNS ConfigMap and forwards
+The network layer takes ownership of Talos' bootstrap CoreDNS ConfigMap and forwards
 recursive queries to Cloudflare with DNS-over-TLS on TCP 853. Pod-to-CoreDNS
 traffic stays cluster-local; cross-node traffic is protected by KubeSpan.
 Talos host/bootstrap DNS remains ordinary DNS because `ResolverConfig` does
 not implement DoT/DoH transports.
 
-CoreDNS and the Cilium `HelmRelease` opt out of Flux pruning. The root Flux
-`Kustomization` also uses `deletionPolicy: Orphan`, so deleting the B2 source
-cannot cascade into removing cluster networking or DNS.
+CoreDNS and the Cilium `HelmRelease` opt out of Flux pruning. The network
+Kustomization and bootstrap root use `deletionPolicy: Orphan`, so deleting the
+B2 source cannot cascade into removing cluster networking or DNS.
 
 ## Kubelet serving certificates
 
-The bundle installs `kubelet-serving-cert-approver` v0.11.0 with a multi-arch
+The certificates layer installs `kubelet-serving-cert-approver` v0.11.0 with a multi-arch
 image pinned by digest. It validates node identity and SANs before approving
 Talos kubelet serving CSRs, keeping logs, exec and metrics-server functional
 across certificate rotations.
@@ -133,7 +140,7 @@ across certificate rotations.
 ## 4. Create B2 keys
 
 [`terraform/b2`](terraform/b2) uses Terraform to create the private bucket and three
-prefix-scoped application keys. The root `b2-terraform` fnox profile loads the
+least-privilege application keys. The root `b2-terraform` fnox profile loads the
 account-level B2 key from `talos.nokiy.net/b2-terraform-admin` only for local
 plan/apply subprocesses:
 
@@ -229,7 +236,8 @@ Only that bucket-scoped, read-only B2 reader is persisted in Kubernetes.
 Flux source-controller probes the bucket-root `.sourceignore` object even when
 the Bucket source has a narrower `spec.prefix`. The reader is therefore scoped
 to the complete bucket, but remains read-only; reconciliation still lists and
-applies only `clusters/production/current/`.
+applies only the active immutable release selected by
+`clusters/production/current/entrypoint/release.yaml`.
 
 Flux bootstrap disables Helm's atomic rollback for the controller release. A
 failed install remains available for inspection instead of removing Flux CRDs
@@ -242,9 +250,12 @@ Bootstrap ownership is intentionally narrow:
 | Talos, Kubernetes versions and machine allocation | Omni Cluster Template | Omni |
 | Initial Cilium and Flux releases | `bootstrap/helmfile.yaml.gotmpl` | Flux after hand-off |
 | B2 reader Secret and root Bucket/Kustomization | `bootstrap/b2-source.yaml.tpl` plus 1Password injection | Operator bootstrap boundary |
-| Workload and infrastructure manifests | `clusters/production` | Flux |
+| Release selection | `current/entrypoint/release.yaml` generated from the Git SHA | Root Flux Kustomization |
+| Network layer | `clusters/production/network` | `cluster-network` Kustomization |
+| Certificate layer | `clusters/production/certificates` | `cluster-certificates` Kustomization |
+| System layer | `clusters/production/system` | `cluster-system` Kustomization |
 
-Flux cannot store its own initial reader credential inside the B2 bundle it
+Flux cannot store its own initial reader credential inside the B2 release it
 needs that credential to fetch. This one out-of-band Secret is therefore an
 intentional bootstrap boundary.
 
@@ -278,10 +289,13 @@ a versioned release:
 mise run rollback-b2 <git-sha>
 flux reconcile source bucket cluster-config -n flux-system
 flux reconcile kustomization cluster-config -n flux-system --with-source
+flux get kustomizations -n flux-system
 ```
 
-The rollback profile downloads with the releases-only reader, then uploads
-with the write-only publisher. GitHub never receives recovery access.
+The rollback profile downloads the archived release entrypoint with the
+releases-only reader, then atomically restores it with the write-only publisher.
+The entrypoint selects the complete immutable snapshot; layer files are never
+copied during rollback. GitHub never receives recovery access.
 
 ## Security boundary
 

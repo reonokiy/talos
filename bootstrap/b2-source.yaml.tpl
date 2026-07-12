@@ -10,7 +10,7 @@ spec:
   bucketName: ${B2_BUCKET}
   endpoint: ${B2_ENDPOINT}
   region: ${B2_REGION}
-  prefix: ${B2_PREFIX}
+  prefix: ${B2_ENTRYPOINT_PREFIX}
   secretRef:
     name: b2-flux-reader
 ---
@@ -23,14 +23,14 @@ spec:
   interval: 5m
   retryInterval: 1m
   timeout: 10m
-  wait: true
-  prune: true
+  wait: false
+  # bootstrap-flux temporarily leaves pruning disabled while child
+  # Kustomizations adopt resources from the legacy monolithic inventory.
+  prune: false
   # Removing this root object must not garbage-collect Cilium/CoreDNS and take
   # the cluster network down. Source changes still prune ordinary resources.
   deletionPolicy: Orphan
   sourceRef:
     kind: Bucket
     name: cluster-config
-  # Bucket artifacts retain the complete object key; spec.prefix filters the
-  # listing but does not strip the prefix from paths in the artifact.
-  path: ${B2_KUSTOMIZE_PATH}
+  path: ${B2_ENTRYPOINT_PATH}

@@ -21,6 +21,7 @@ RECOVERY_APPLICATION_KEY=$B2_RECOVERY_READ_APPLICATION_KEY
 unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY
 unset B2_RECOVERY_READ_KEY_ID B2_RECOVERY_READ_APPLICATION_KEY
 ENDPOINT_URL="https://$B2_ENDPOINT"
+ENTRYPOINT_PREFIX="${B2_PREFIX}entrypoint/"
 TMP=$(mktemp)
 trap 'rm -f "$TMP"' EXIT
 
@@ -33,21 +34,21 @@ AWS_ACCESS_KEY_ID="$RECOVERY_KEY_ID" \
 AWS_SECRET_ACCESS_KEY="$RECOVERY_APPLICATION_KEY" \
 AWS_DEFAULT_REGION="$B2_REGION" \
   aws s3 cp \
-    "s3://${B2_BUCKET}/${B2_ARCHIVE_PREFIX}${RELEASE_ID}/bundle.yaml" \
+    "s3://${B2_BUCKET}/${B2_ARCHIVE_PREFIX}${RELEASE_ID}/release.yaml" \
     "$TMP" \
     --endpoint-url "$ENDPOINT_URL"
 
 test -s "$TMP"
-BUNDLE_SHA=$(sha256sum "$TMP" | cut -d' ' -f1)
+RELEASE_SHA=$(sha256sum "$TMP" | cut -d' ' -f1)
 
 AWS_ACCESS_KEY_ID="$PUBLISH_KEY_ID" \
 AWS_SECRET_ACCESS_KEY="$PUBLISH_APPLICATION_KEY" \
 AWS_DEFAULT_REGION="$B2_REGION" \
   aws s3 cp \
     "$TMP" \
-    "s3://${B2_BUCKET}/${B2_PREFIX}bundle.yaml" \
+    "s3://${B2_BUCKET}/${ENTRYPOINT_PREFIX}release.yaml" \
     --endpoint-url "$ENDPOINT_URL" \
     --content-type application/yaml \
-    --metadata "sha256=${BUNDLE_SHA},git-sha=${RELEASE_ID},rollback=true"
+    --metadata "sha256=${RELEASE_SHA},git-sha=${RELEASE_ID},rollback=true"
 
-echo "Restored release $RELEASE_ID ($BUNDLE_SHA) to s3://$B2_BUCKET/${B2_PREFIX}bundle.yaml"
+echo "Restored release $RELEASE_ID ($RELEASE_SHA) to s3://$B2_BUCKET/${ENTRYPOINT_PREFIX}release.yaml"

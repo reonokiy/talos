@@ -1,4 +1,4 @@
-name: Publish Flux bundle to B2
+name: Publish Flux release to B2
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
           install_args: --locked kubectl helm helmfile aws-cli
           cache: true
 
-      - name: Publish bundle and versioned audit copy
+      - name: Publish immutable repository snapshot and active entrypoint
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.B2_WRITE_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_WRITE_APPLICATION_KEY }}

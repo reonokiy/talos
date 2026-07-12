@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-: "${B2_READ_KEY_ID:?load the prefix-scoped B2 reader key with fnox}"
-: "${B2_READ_APPLICATION_KEY:?load the prefix-scoped B2 reader application key with fnox}"
+: "${B2_READ_KEY_ID:?load the bucket-scoped B2 reader key with fnox}"
+: "${B2_READ_APPLICATION_KEY:?load the bucket-scoped B2 reader application key with fnox}"
 
 READER_KEY_ID=$B2_READ_KEY_ID
 READER_APPLICATION_KEY=$B2_READ_APPLICATION_KEY
