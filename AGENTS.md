@@ -57,6 +57,8 @@ clusters/production/
 │   │   └── coredns/
 │   ├── certificates/
 │   │   └── kubelet-serving-cert-approver/
+│   ├── secrets/
+│   │   └── external-secrets/
 │   └── system/
 │       └── metrics-server/
 ├── apps/
@@ -67,8 +69,10 @@ clusters/production/
 - `infrastructure/network` owns cluster networking and DNS.
 - `infrastructure/certificates` owns kubelet serving-certificate approval and
   similar certificate prerequisites.
+- `infrastructure/secrets` owns External Secrets Operator, its CRDs, admission
+  policies, and other cluster-wide secret-management safeguards.
 - `infrastructure/system` owns cluster services that depend on networking and
-  certificates, such as Metrics Server.
+  certificates and secret management, such as Metrics Server.
 - `apps` is reserved for application workloads. Do not place cluster-wide
   controllers or shared application prerequisites there.
 - If another cluster later requires reuse, extract explicit shared bases then.
@@ -76,12 +80,13 @@ clusters/production/
 
 ### Flux reconciliation layers
 
-The generated release entrypoint creates four Kustomizations over one immutable
+The generated release entrypoint creates five Kustomizations over one immutable
 `cluster-release` Bucket artifact:
 
 ```text
 cluster-network
   -> cluster-certificates
+  -> cluster-secrets
   -> cluster-system
   -> cluster-apps
 ```
@@ -91,9 +96,56 @@ cluster-network
 - Network and certificate layers use `deletionPolicy: Orphan` to avoid a source
   or control-plane mistake cascading into loss of critical cluster services.
 - Cilium and CoreDNS also carry resource-level pruning protection.
+- The secrets layer uses `deletionPolicy: Orphan`; loss of a release source must
+  not remove External Secrets CRDs, admission policy, or the controller while
+  applications still depend on generated Secrets.
 - Put an application in its own Kustomize directory under `apps` when it needs
   an independent failure or pruning boundary. Avoid dependencies between normal
   applications; move shared controllers and prerequisites into infrastructure.
+
+### Application secret management
+
+External Secrets Operator reads application credentials from the single
+1Password vault `talos.nokiy.net`. The operator is cluster infrastructure, but
+every application owns a namespaced `SecretStore` in its own Kustomize
+directory. Follow `clusters/production/apps/README.md` when onboarding an
+application.
+
+- Use only `external-secrets.io/v1` namespaced `SecretStore` and
+  `ExternalSecret` resources. Do not create `ClusterSecretStore`,
+  `ClusterExternalSecret`, `PushSecret`, or `ClusterPushSecret`; their CRDs and
+  reconciliation paths are intentionally disabled.
+- Every application `SecretStore` must use `provider.onepasswordSDK`, vault
+  `talos.nokiy.net`, and its namespace-local Secret
+  `onepassword-service-account` key `token`.
+- Name each 1Password item `<namespace>/<application-or-purpose>`. Every
+  `spec.data[].remoteRef.key` must therefore have the form
+  `<namespace>/<item>/<field>` and start with the `ExternalSecret` namespace
+  followed by `/`.
+- Use explicit `spec.data` mappings. `dataFrom`, `find`, and `extract` are
+  forbidden because they can bypass the namespace item-prefix boundary.
+- Generated Kubernetes Secrets must use `spec.target.creationPolicy: Owner`.
+  Prefer `deletionPolicy: Retain` unless an application has a deliberate and
+  reviewed reason to delete the Secret with its external source.
+- Do not grant application ServiceAccounts permission to create or update
+  `SecretStore` or `ExternalSecret`. The chart does not aggregate these
+  permissions into the standard `view` or `edit` roles; Flux and cluster
+  administrators own the declarations.
+- The Kubernetes `ValidatingAdmissionPolicy` resources in
+  `infrastructure/secrets/external-secrets/admission-policy.yaml` enforce the
+  provider, vault, bootstrap Secret, ownership policy, explicit mappings, and
+  namespace item prefix at admission time. Keep
+  `scripts/check-external-secrets-policy.sh` aligned with those runtime rules.
+- After Flux creates a new application namespace, provision its bootstrap token
+  with `mise run sync-external-secrets-secret -- <namespace>`. This is an
+  out-of-band bootstrap operation like the Flux B2 reader. Never commit the
+  token or render it into B2.
+- One vault cannot provide cryptographic item-level isolation: the Service
+  Account token can read every item in `talos.nokiy.net`. Namespaced Stores,
+  RBAC, item prefixes, and admission policy prevent configuration-level
+  cross-namespace access, but they do not contain a compromised ESO controller
+  or token. Do not describe this design as a hard 1Password authorization
+  boundary.
 
 ### B2 release protocol
 

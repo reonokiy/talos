@@ -53,11 +53,30 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: cluster-system
+  name: cluster-secrets
   namespace: flux-system
 spec:
   dependsOn:
     - name: cluster-certificates
+  interval: 5m
+  retryInterval: 1m
+  timeout: 10m
+  wait: true
+  prune: true
+  deletionPolicy: Orphan
+  sourceRef:
+    kind: Bucket
+    name: cluster-release
+  path: ${B2_RELEASE_PATH}/clusters/production/infrastructure/secrets
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cluster-system
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: cluster-secrets
   interval: 5m
   retryInterval: 1m
   timeout: 10m
