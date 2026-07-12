@@ -3,6 +3,9 @@
 This stack owns the private `talos-nokiy-net` bucket, the three application
 keys used by the publishing, reconciliation and recovery paths, and the
 `talos.nokiy.net/b2-talos-nokiy-net` 1Password item that receives those keys.
+The bucket retains its existing B2-managed AES-256 server-side encryption and
+File Lock setting; both are declared explicitly to prevent an imported bucket
+from being replaced.
 
 State is stored in HCP Terraform. Create a workspace named `talos-b2`, set its
 execution mode to **Local**, and replace these placeholders in the root
@@ -58,17 +61,18 @@ terraform -chdir=terraform/b2 import \
   'vaults/<vault-uuid>/items/<item-uuid>'
 ```
 
-Skip the import when the item does not exist. On apply, Terraform writes these
-concealed fields directly through the Desktop App session:
+Skip the import when the item does not exist. On apply, Terraform organizes the
+item into these sections:
 
 ```text
-ACCESS_KEY
-SECRET_KEY
-READ_ACCESS_KEY
-READ_SECRET_KEY
-RECOVERY_ACCESS_KEY
-RECOVERY_SECRET_KEY
+configuration: ENDPOINT, REGION, BUCKET, CURRENT_PREFIX, RELEASES_PREFIX
+publisher: ACCESS_KEY, SECRET_KEY
+flux_reader: READ_ACCESS_KEY, READ_SECRET_KEY
+recovery_reader: RECOVERY_ACCESS_KEY, RECOVERY_SECRET_KEY
 ```
+
+Key fields are concealed. Configuration fields are ordinary strings so they
+remain easy to inspect in 1Password.
 
 If the B2 bucket already exists, look up its `bucketId` in the Backblaze console
 and run the import task. It loads all configured credentials from the

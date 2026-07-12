@@ -2,8 +2,8 @@ output "bucket" {
   description = "Non-secret B2 connection settings used by fnox."
   value = {
     name           = b2_bucket.flux.bucket_name
-    endpoint       = "s3.eu-central-003.backblazeb2.com"
-    region         = "eu-central-003"
+    endpoint       = local.endpoint
+    region         = local.region
     current_prefix = local.current_prefix
     release_prefix = local.release_prefix
   }

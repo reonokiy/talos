@@ -24,32 +24,32 @@ B2_APPLICATION_KEY = { provider = "op", value = "op://dev/b2eu/MASTER_KEY" }
 # Publishes the rendered active bundle and versioned release copies to B2.
 # It also provisions the B2 writer in GitHub's production Environment.
 [profiles.publisher.secrets]
-B2_ENDPOINT = { default = "s3.eu-central-003.backblazeb2.com" }
-B2_REGION = { default = "eu-central-003" }
-B2_BUCKET = { default = "talos-nokiy-net" }
-B2_PREFIX = { default = "clusters/production/current/" }
-B2_ARCHIVE_PREFIX = { default = "clusters/production/releases/" }
+B2_ENDPOINT = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/ENDPOINT" }
+B2_REGION = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/REGION" }
+B2_BUCKET = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/BUCKET" }
+B2_PREFIX = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/CURRENT_PREFIX" }
+B2_ARCHIVE_PREFIX = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/RELEASES_PREFIX" }
 AWS_ACCESS_KEY_ID = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/ACCESS_KEY" }
 AWS_SECRET_ACCESS_KEY = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/SECRET_KEY" }
 
 # Bootstraps Flux with the read-only credential needed to fetch the active B2
 # bundle. This profile cannot publish or restore cluster state.
 [profiles.flux-bootstrap.secrets]
-B2_ENDPOINT = { default = "s3.eu-central-003.backblazeb2.com" }
-B2_REGION = { default = "eu-central-003" }
-B2_BUCKET = { default = "talos-nokiy-net" }
-B2_PREFIX = { default = "clusters/production/current/" }
+B2_ENDPOINT = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/ENDPOINT" }
+B2_REGION = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/REGION" }
+B2_BUCKET = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/BUCKET" }
+B2_PREFIX = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/CURRENT_PREFIX" }
 B2_READ_KEY_ID = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/READ_ACCESS_KEY" }
 B2_READ_APPLICATION_KEY = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/READ_SECRET_KEY" }
 
 # Reads one archived release with the recovery credential, then republishes it
 # as the active bundle with the same writer used by the publisher profile.
 [profiles.rollback.secrets]
-B2_ENDPOINT = { default = "s3.eu-central-003.backblazeb2.com" }
-B2_REGION = { default = "eu-central-003" }
-B2_BUCKET = { default = "talos-nokiy-net" }
-B2_PREFIX = { default = "clusters/production/current/" }
-B2_ARCHIVE_PREFIX = { default = "clusters/production/releases/" }
+B2_ENDPOINT = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/ENDPOINT" }
+B2_REGION = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/REGION" }
+B2_BUCKET = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/BUCKET" }
+B2_PREFIX = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/CURRENT_PREFIX" }
+B2_ARCHIVE_PREFIX = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/RELEASES_PREFIX" }
 AWS_ACCESS_KEY_ID = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/ACCESS_KEY" }
 AWS_SECRET_ACCESS_KEY = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/SECRET_KEY" }
 B2_RECOVERY_READ_KEY_ID = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/RECOVERY_ACCESS_KEY" }

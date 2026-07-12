@@ -167,24 +167,15 @@ client performs a bucket-existence check, so only its reader receives
 
 Item `b2-talos-nokiy-net`:
 
-| Field | Example |
+| Section | Fields |
 |---|---|
-| `ACCESS_KEY` | Publisher B2 application key ID |
-| `SECRET_KEY` | Publisher B2 application key |
-| `READ_ACCESS_KEY` | Flux B2 reader key ID |
-| `READ_SECRET_KEY` | Flux B2 reader application key |
-| `RECOVERY_ACCESS_KEY` | Recovery B2 reader key ID |
-| `RECOVERY_SECRET_KEY` | Recovery B2 reader application key |
+| `configuration` | `ENDPOINT`, `REGION`, `BUCKET`, `CURRENT_PREFIX`, `RELEASES_PREFIX` |
+| `publisher` | `ACCESS_KEY`, `SECRET_KEY` |
+| `flux_reader` | `READ_ACCESS_KEY`, `READ_SECRET_KEY` |
+| `recovery_reader` | `RECOVERY_ACCESS_KEY`, `RECOVERY_SECRET_KEY` |
 
-The non-secret B2 settings are committed as fnox defaults:
-
-```text
-B2_BUCKET=talos-nokiy-net
-B2_ENDPOINT=s3.eu-central-003.backblazeb2.com
-B2_REGION=eu-central-003
-B2_PREFIX=clusters/production/current/
-B2_ARCHIVE_PREFIX=clusters/production/releases/
-```
+Terraform owns all four sections. fnox addresses each unique field directly as
+`op://vault/item/FIELD`; section names are not part of the reference path.
 
 Check references without exporting values into your shell:
 
