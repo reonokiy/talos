@@ -9,6 +9,7 @@ aws-cli = "2.35.20"
 cosign = "3.1.1"
 shellcheck = "0.11.0"
 actionlint = "1.7.12"
+yq = "4.53.3"
 cilium-cli = "0.19.5"
 kubelogin = "1.36.2"
 fnox = "1.30.0"
@@ -56,6 +57,10 @@ run = "fnox --no-daemon --profile flux-bootstrap exec --no-defaults -- ./scripts
 [tasks.sync-flux-secret]
 description = "Reload the prefix-scoped Flux B2 reader from 1Password"
 run = "fnox --no-daemon --profile flux-bootstrap exec --no-defaults -- ./scripts/sync-flux-b2-secret.sh"
+
+[tasks.sync-external-secrets-secret]
+description = "Sync the 1Password Service Account token into one or more application namespaces"
+run = "fnox --no-daemon --profile external-secrets-bootstrap exec --no-defaults -- ./scripts/sync-external-secrets-secret.sh"
 
 [tasks.configure-github]
 description = "Load the publisher from 1Password into GitHub Environment"

@@ -3,5 +3,6 @@ kind: Kustomization
 resources:
   - infrastructure/network
   - infrastructure/certificates
+  - infrastructure/secrets
   - infrastructure/system
   - apps

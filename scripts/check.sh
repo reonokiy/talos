@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 "$ROOT/scripts/render.sh"
+"$ROOT/scripts/check-external-secrets-policy.sh"
 
 helm template cilium oci://quay.io/cilium/charts/cilium \
   --version 1.19.5 \
