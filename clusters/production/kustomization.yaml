@@ -4,3 +4,4 @@ resources:
   - ../../infrastructure/cilium
   - ../../infrastructure/coredns
   - ../../infrastructure/kubelet-serving-cert-approver
+  - ../../infrastructure/metrics-server
