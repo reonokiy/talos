@@ -83,8 +83,8 @@ gh variable set B2_PREFIX --repo "$GITHUB_REPOSITORY" --env production --body "$
 gh variable set B2_ARCHIVE_PREFIX --repo "$GITHUB_REPOSITORY" --env production --body "$B2_ARCHIVE_PREFIX"
 
 printf '%s' "$PUBLISH_KEY_ID" |
-  gh secret set B2_WRITE_KEY_ID --repo "$GITHUB_REPOSITORY" --env production --body -
+  gh secret set B2_WRITE_KEY_ID --repo "$GITHUB_REPOSITORY" --env production
 printf '%s' "$PUBLISH_APPLICATION_KEY" |
-  gh secret set B2_WRITE_APPLICATION_KEY --repo "$GITHUB_REPOSITORY" --env production --body -
+  gh secret set B2_WRITE_APPLICATION_KEY --repo "$GITHUB_REPOSITORY" --env production
 
 echo "Configured main-only B2 Variables/Secrets in production for $GITHUB_REPOSITORY"
