@@ -32,8 +32,8 @@ publisher Variables/Secrets provisioned by a local fnox task. The cluster stores
 only the bucket-scoped, read-only B2 key required by source-controller; it never
 receives a publisher key or any 1Password authentication material.
 
-Each release mirrors the repository's `clusters/`, `infrastructure/` and `apps/` trees
-under `clusters/production/releases/<git-sha>/`. GitHub Actions uploads that
+Each release mirrors the repository's `clusters/` tree under
+`clusters/production/releases/<git-sha>/`. GitHub Actions uploads that
 immutable snapshot first, then atomically replaces the single
 `clusters/production/current/entrypoint/release.yaml` object. The entrypoint
 pins Flux to the completed release prefix, so it cannot observe a partially
@@ -45,10 +45,11 @@ Bucket artifact. Their dependency chain is network -> certificates -> system
 -> apps. Health, inventory, pruning and failure reporting are isolated per
 layer while all layers advance to the same Git commit.
 
-Reusable cluster capabilities live under categorized `infrastructure/`
-directories. Workloads live under `apps/`. The `clusters/production/` tree only
-selects the infrastructure and applications enabled for this cluster; runtime
-ordering is expressed with Flux `dependsOn`, never filesystem ordering.
+This is intentionally a single-cluster layout. Cluster capabilities live under
+`clusters/production/infrastructure/` and workloads under
+`clusters/production/apps/`. If another cluster later needs to reuse components,
+shared bases can be extracted then. Runtime ordering is expressed with Flux
+`dependsOn`, never filesystem ordering.
 
 ## 1. Install locked tools
 

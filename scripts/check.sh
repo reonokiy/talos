@@ -7,7 +7,7 @@ ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 helm template cilium oci://quay.io/cilium/charts/cilium \
   --version 1.19.5 \
   --namespace kube-system \
-  --values "$ROOT/infrastructure/network/cilium/values.yaml" >/dev/null
+  --values "$ROOT/clusters/production/infrastructure/network/cilium/values.yaml" >/dev/null
 
 helmfile --file "$ROOT/bootstrap/helmfile.yaml.gotmpl" list --skip-charts >/dev/null
 
