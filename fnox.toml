@@ -42,8 +42,8 @@ B2_PREFIX = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/
 B2_READ_KEY_ID = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/READ_ACCESS_KEY" }
 B2_READ_APPLICATION_KEY = { provider = "op", value = "op://talos.nokiy.net/b2-talos-nokiy-net/READ_SECRET_KEY" }
 
-# Bootstraps one namespaced copy of the read-only 1Password Service Account
-# token for each application SecretStore. The account is restricted to the
+# Bootstraps the single read-only 1Password Service Account token consumed by
+# the central ClusterSecretStore. The account is restricted to the
 # talos.nokiy.net vault; item access cannot be narrowed further by 1Password.
 [profiles.external-secrets-bootstrap.secrets]
 ONEPASSWORD_SERVICE_ACCOUNT_TOKEN = { provider = "op", value = "op://talos.nokiy.net/service-account/credential" }
