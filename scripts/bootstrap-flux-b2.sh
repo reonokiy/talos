@@ -84,7 +84,7 @@ flux resume kustomization cluster-config --namespace flux-system
 flux reconcile source bucket cluster-config --namespace flux-system
 flux reconcile kustomization cluster-config --namespace flux-system --with-source
 
-for layer in cluster-network cluster-certificates cluster-system; do
+for layer in cluster-network cluster-certificates cluster-system cluster-apps; do
   flux reconcile kustomization "$layer" --namespace flux-system --with-source
 done
 

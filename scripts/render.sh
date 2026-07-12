@@ -20,6 +20,7 @@ mkdir -p "$OUT/repository"
 # validated locally. The immutable release prefix provides version isolation.
 cp -R "$ROOT/clusters" "$OUT/repository/clusters"
 cp -R "$ROOT/infrastructure" "$OUT/repository/infrastructure"
+cp -R "$ROOT/apps" "$OUT/repository/apps"
 
 sed \
   -e "s|\${B2_BUCKET}|$B2_BUCKET|g" \

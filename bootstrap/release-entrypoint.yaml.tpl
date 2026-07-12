@@ -29,7 +29,7 @@ spec:
   sourceRef:
     kind: Bucket
     name: cluster-release
-  path: ${B2_RELEASE_PATH}/clusters/production/network
+  path: ${B2_RELEASE_PATH}/clusters/production/infrastructure/network
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -48,7 +48,7 @@ spec:
   sourceRef:
     kind: Bucket
     name: cluster-release
-  path: ${B2_RELEASE_PATH}/clusters/production/certificates
+  path: ${B2_RELEASE_PATH}/clusters/production/infrastructure/certificates
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
@@ -66,4 +66,22 @@ spec:
   sourceRef:
     kind: Bucket
     name: cluster-release
-  path: ${B2_RELEASE_PATH}/clusters/production/system
+  path: ${B2_RELEASE_PATH}/clusters/production/infrastructure/system
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cluster-apps
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: cluster-system
+  interval: 5m
+  retryInterval: 1m
+  timeout: 10m
+  wait: true
+  prune: true
+  sourceRef:
+    kind: Bucket
+    name: cluster-release
+  path: ${B2_RELEASE_PATH}/clusters/production/apps

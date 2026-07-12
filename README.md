@@ -32,18 +32,23 @@ publisher Variables/Secrets provisioned by a local fnox task. The cluster stores
 only the bucket-scoped, read-only B2 key required by source-controller; it never
 receives a publisher key or any 1Password authentication material.
 
-Each release mirrors the repository's `clusters/` and `infrastructure/` trees
+Each release mirrors the repository's `clusters/`, `infrastructure/` and `apps/` trees
 under `clusters/production/releases/<git-sha>/`. GitHub Actions uploads that
 immutable snapshot first, then atomically replaces the single
 `clusters/production/current/entrypoint/release.yaml` object. The entrypoint
 pins Flux to the completed release prefix, so it cannot observe a partially
 published multi-file revision.
 
-The entrypoint creates independent `cluster-network`, `cluster-certificates`
-and `cluster-system` Kustomizations over the same immutable Bucket artifact.
-Their dependency chain is network -> certificates -> system. Health, inventory,
-pruning and failure reporting are isolated per layer while all layers advance
-to the same Git commit.
+The entrypoint creates independent `cluster-network`, `cluster-certificates`,
+`cluster-system` and `cluster-apps` Kustomizations over the same immutable
+Bucket artifact. Their dependency chain is network -> certificates -> system
+-> apps. Health, inventory, pruning and failure reporting are isolated per
+layer while all layers advance to the same Git commit.
+
+Reusable cluster capabilities live under categorized `infrastructure/`
+directories. Workloads live under `apps/`. The `clusters/production/` tree only
+selects the infrastructure and applications enabled for this cluster; runtime
+ordering is expressed with Flux `dependsOn`, never filesystem ordering.
 
 ## 1. Install locked tools
 
@@ -251,9 +256,10 @@ Bootstrap ownership is intentionally narrow:
 | Initial Cilium and Flux releases | `bootstrap/helmfile.yaml.gotmpl` | Flux after hand-off |
 | B2 reader Secret and root Bucket/Kustomization | `bootstrap/b2-source.yaml.tpl` plus 1Password injection | Operator bootstrap boundary |
 | Release selection | `current/entrypoint/release.yaml` generated from the Git SHA | Root Flux Kustomization |
-| Network layer | `clusters/production/network` | `cluster-network` Kustomization |
-| Certificate layer | `clusters/production/certificates` | `cluster-certificates` Kustomization |
-| System layer | `clusters/production/system` | `cluster-system` Kustomization |
+| Network layer | `clusters/production/infrastructure/network` | `cluster-network` Kustomization |
+| Certificate layer | `clusters/production/infrastructure/certificates` | `cluster-certificates` Kustomization |
+| System layer | `clusters/production/infrastructure/system` | `cluster-system` Kustomization |
+| Application layer | `clusters/production/apps` | `cluster-apps` Kustomization |
 
 Flux cannot store its own initial reader credential inside the B2 release it
 needs that credential to fetch. This one out-of-band Secret is therefore an
