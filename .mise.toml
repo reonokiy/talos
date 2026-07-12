@@ -95,3 +95,7 @@ run = "fnox --no-daemon --profile b2-terraform exec --no-defaults -- terraform p
 description = "Apply the B2 bucket and scoped application keys"
 dir = "terraform/b2"
 run = "fnox --no-daemon --profile b2-terraform exec --no-defaults -- terraform apply"
+
+[tasks."b2:tf:import-manual"]
+description = "Import an existing B2 bucket with fnox-managed credentials"
+run = "fnox --no-daemon --profile b2-terraform exec --no-defaults -- ./scripts/import-b2-terraform.sh"

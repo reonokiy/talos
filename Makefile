@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: check validate render publish-b2 rollback-b2 configure-github bootstrap-cilium bootstrap-flux sync-flux-secret status b2-init b2-validate b2-plan b2-apply
+.PHONY: check validate render publish-b2 rollback-b2 configure-github bootstrap-cilium bootstrap-flux sync-flux-secret status b2-init b2-validate b2-plan b2-apply b2-import
 
 check:
 	mise run check
@@ -44,3 +44,7 @@ b2-plan:
 
 b2-apply:
 	mise run b2:tf:apply
+
+b2-import:
+	@test -n "$(BUCKET_ID)" || { echo "set BUCKET_ID=<b2-bucket-id>" >&2; exit 1; }
+	mise run b2:tf:import-manual "$(BUCKET_ID)"

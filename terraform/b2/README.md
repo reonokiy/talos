@@ -70,6 +70,16 @@ RECOVERY_ACCESS_KEY
 RECOVERY_SECRET_KEY
 ```
 
+If the B2 bucket already exists, look up its `bucketId` in the Backblaze console
+and run the import task. It loads all configured credentials from the
+`b2-terraform` fnox profile. The underlying script only prompts, with terminal
+echo disabled, for a value missing from that profile and never writes secrets
+to disk:
+
+```bash
+mise run b2:tf:import-manual '<b2-bucket-id>'
+```
+
 B2 only returns an application-key secret when Terraform creates it. Losing
 Terraform state therefore requires rotating the affected key even though a
 copy remains in 1Password.
