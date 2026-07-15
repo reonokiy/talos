@@ -54,6 +54,10 @@ run = "./scripts/bootstrap-cilium.sh"
 description = "Apply the declarative Flux release and B2 source"
 run = "fnox --no-daemon --profile flux-bootstrap exec --no-defaults -- ./scripts/bootstrap-flux-b2.sh"
 
+[tasks.rotate-omni-join-token]
+description = "Manually rotate Omni's default SideroLink join token"
+run = "./scripts/rotate-omni-join-token.sh"
+
 [tasks.sync-flux-secret]
 description = "Reload the prefix-scoped Flux B2 reader from 1Password"
 run = "fnox --no-daemon --profile flux-bootstrap exec --no-defaults -- ./scripts/sync-flux-b2-secret.sh"
