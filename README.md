@@ -96,6 +96,45 @@ kubectl exec resolver-check -- nslookup quay.io
 kubectl delete pod resolver-check
 ```
 
+### Rotate the Omni join token
+
+Authenticate `omnictl` against the intended Omni instance before rotating its
+default SideroLink join token. Run the task without another operator or Omni Web
+session changing join tokens at the same time:
+
+```bash
+mise run rotate-omni-join-token
+mise run rotate-omni-join-token -- planned-rotate
+```
+
+An explicit name must be 1-16 characters; the default is a 16-character UTC
+timestamp. The task confirms the operation interactively, never uses `--force`,
+and verifies changes against the `DefaultJoinToken` and `JoinToken` source
+resources instead of the eventually consistent status table.
+
+If Omni refuses to revoke a token which machines still use, the replacement
+stays default and the previous token stays active. Resolve the displayed machine
+warnings, then rerun the same task; it resumes the same rotation instead of
+creating another token. No failure path automatically deletes or unrevokes a
+token.
+
+An interrupted or uncertain operation leaves a private recovery file under
+`${XDG_STATE_HOME:-$HOME/.local/state}/talos`. It contains only the new token
+name and SHA-256 fingerprints of token IDs; join-token IDs are neither printed
+nor persisted. Most operations reconcile by rerunning the task. If interruption
+happened before the new token's fingerprint was recorded, the task fails closed
+instead of adopting a same-name token or retrying creation; inspect Omni
+manually as instructed by the error. A hard kill can leave the adjacent empty
+`.lock` directory; verify that no rotation process is running before removing
+that stale lock and resuming.
+
+The local lock cannot exclude another computer or the Omni Web UI, so token
+management must remain exclusive for the duration of the command. After a
+successful rotation, regenerate any cached installation media, user data, or
+join configuration which embeds the previous token. See Omni's
+[SideroLink join-token rotation guide](https://docs.siderolabs.com/omni/security-and-authentication/rotate-siderolink-join-token)
+for the corresponding operator workflow.
+
 ## 3. Bootstrap Cilium
 
 The bootstrap releases are declared in

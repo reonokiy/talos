@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+
+set -eu
+
+state=${OMNI_FAKE_STATE:?}
+tokens="${state}/tokens"
+calls="${state}/calls"
+scenario=$(sed -n '1p' "${state}/scenario")
+
+printf '%s\n' "$*" >>"$calls"
+
+for argument in "$@"; do
+  case "$argument" in
+    -f | --force)
+      printf 'the fake refuses force flags\n' >&2
+      exit 90
+      ;;
+  esac
+done
+
+token_name() {
+  sed -n '1p' "${tokens}/$1"
+}
+
+token_revoked() {
+  sed -n '2p' "${tokens}/$1"
+}
+
+write_token() {
+  printf '%s\n%s\n' "$2" "$3" >"${tokens}/$1"
+}
+
+set_token_revoked() {
+  local name
+
+  name=$(token_name "$1")
+  write_token "$1" "$name" "$2"
+}
+
+list_ids() {
+  local file
+
+  for file in "${tokens}"/*; do
+    [[ -e "$file" ]] || continue
+    basename "$file"
+  done
+}
+
+case "${1-}" in
+  delete)
+    printf 'the fake refuses generic token deletion\n' >&2
+    exit 90
+    ;;
+  get)
+    resource_type=${2-}
+
+    case "$resource_type" in
+      DefaultJoinTokens.omni.sidero.dev)
+        [[ $# -eq 4 && "${3-}" == default && "${4-}" == "-o=jsonpath={.spec.tokenid}" ]] || {
+          printf 'invalid default-token get arguments\n' >&2
+          exit 2
+        }
+
+        if [[ "$scenario" == authority_unavailable_after_make && -f "${state}/fail-default-reads" ]]; then
+          printf 'transport unavailable\n' >&2
+          exit 1
+        fi
+
+        if [[ "$scenario" == make_default_late_commit && -f "${state}/late-make" && ! -f "${state}/late-make-delivered" ]]; then
+          sed -n '1p' "${state}/default"
+          printf 'new-token-id\n' >"${state}/default"
+          : >"${state}/late-make-delivered"
+          exit 0
+        fi
+
+        if [[ "$scenario" == third_default_before_revoke && -f "${state}/switched" ]]; then
+          count=0
+          [[ ! -f "${state}/post-switch-reads" ]] || count=$(sed -n '1p' "${state}/post-switch-reads")
+          count=$((count + 1))
+          printf '%s\n' "$count" >"${state}/post-switch-reads"
+          if ((count >= 2)); then
+            printf 'third-token-id\n' >"${state}/default"
+          fi
+        fi
+
+        sed -n '1p' "${state}/default"
+        ;;
+      JoinTokens.omni.sidero.dev)
+        if [[ "${3-}" == -o=* ]]; then
+          [[ $# -eq 3 && "${3-}" == "-o=jsonpath={.metadata.id}" ]] || {
+            printf 'invalid join-token list arguments\n' >&2
+            exit 2
+          }
+          list_ids
+          exit 0
+        fi
+
+        id=${3-}
+        [[ -f "${tokens}/$id" ]] || exit 1
+        [[ $# -eq 4 ]] || exit 2
+
+        case "${4-}" in
+          '-o=jsonpath={.spec.name}') token_name "$id" ;;
+          '-o=jsonpath={.spec.revoked}')
+            if [[ "$scenario" == revoke_late_commit && "$id" == old-token-id && -f "${state}/late-revoke" && ! -f "${state}/late-revoke-delivered" ]]; then
+              token_revoked "$id"
+              set_token_revoked "$id" true
+              : >"${state}/late-revoke-delivered"
+            else
+              token_revoked "$id"
+            fi
+            ;;
+          *) printf 'unsupported fake get output: %s\n' "${4-}" >&2; exit 2 ;;
+        esac
+        ;;
+      *)
+        printf 'unsupported fake resource type: %s\n' "$resource_type" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+  jointoken)
+    operation=${2-}
+
+    case "$operation" in
+      create)
+        name=${3-}
+
+        if [[ "$scenario" == create_unobserved ]]; then
+          printf 'create result unavailable\n' >&2
+          exit 1
+        fi
+
+        [[ ! -e "${tokens}/new-token-id" ]] || exit 1
+        write_token new-token-id "$name" false
+
+        if [[ "$scenario" == create_committed_error ]]; then
+          printf 'transport failed after creating new-token-id\n' >&2
+          exit 1
+        fi
+
+        printf 'new-token-id\n'
+        ;;
+      make-default)
+        id=${3-}
+        [[ -f "${tokens}/$id" ]] || exit 1
+
+        if [[ "$id" == new-token-id && "$scenario" == make_default_uncommitted_error ]]; then
+          printf 'server rejected new-token-id\n' >&2
+          exit 1
+        fi
+
+        if [[ "$id" == new-token-id && "$scenario" == make_default_late_commit ]]; then
+          : >"${state}/late-make"
+          printf 'transport timed out before new-token-id was observed\n' >&2
+          exit 1
+        fi
+
+        printf '%s\n' "$id" >"${state}/default"
+        [[ "$id" != new-token-id ]] || : >"${state}/switched"
+
+        if [[ "$id" == new-token-id && "$scenario" == make_default_committed_error && ! -f "${state}/make-error-returned" ]]; then
+          : >"${state}/make-error-returned"
+          printf 'transport failed after switching to new-token-id\n' >&2
+          exit 1
+        fi
+
+        if [[ "$id" == new-token-id && "$scenario" == authority_unavailable_after_make ]]; then
+          : >"${state}/fail-default-reads"
+          printf 'transport failed after switching to new-token-id\n' >&2
+          exit 1
+        fi
+
+        printf 'token %s is now default\n' "$id"
+        ;;
+      revoke)
+        id=${3-}
+        [[ -f "${tokens}/$id" ]] || exit 1
+
+        if [[ "$id" == old-token-id && "$scenario" == revoke_refused ]]; then
+          printf 'WARNING: machine-a still depends on old-token-id\n' >&2
+          if IFS= read -r answer && [[ "$answer" == y || "$answer" == Y ]]; then
+            set_token_revoked "$id" true
+          else
+            printf 'operation was aborted for old-token-id\n' >&2
+            exit 1
+          fi
+        fi
+
+        if [[ "$id" == old-token-id && "$scenario" == revoke_late_commit ]]; then
+          : >"${state}/late-revoke"
+          printf 'transport timed out before revoking old-token-id\n' >&2
+          exit 1
+        fi
+
+        # Omni permits revoking the current default. The fake intentionally
+        # mirrors that behavior so unsafe compensation fails the tests.
+        if [[ "$id" == old-token-id && "$scenario" == revoked_token_became_default ]]; then
+          printf 'old-token-id\n' >"${state}/default"
+        fi
+
+        set_token_revoked "$id" true
+
+        if [[ "$id" == old-token-id && "$scenario" == revoke_committed_error ]]; then
+          printf 'transport failed after revoking old-token-id\n' >&2
+          exit 1
+        fi
+
+        printf 'token %s was revoked\n' "$id"
+        ;;
+      unrevoke)
+        id=${3-}
+        [[ -f "${tokens}/$id" ]] || exit 1
+        set_token_revoked "$id" false
+        printf 'token %s was unrevoked\n' "$id"
+        ;;
+      delete)
+        id=${3-}
+        [[ -f "${tokens}/$id" ]] || exit 1
+        [[ "$(sed -n '1p' "${state}/default")" != "$id" ]] || {
+          printf 'cannot delete default token %s\n' "$id" >&2
+          exit 1
+        }
+        rm -f "${tokens}/$id"
+        printf 'deleted join token: %s\n' "$id"
+        ;;
+      list)
+        printf 'the rotation script must not read asynchronous jointoken list output\n' >&2
+        exit 91
+        ;;
+      *)
+        printf 'unsupported fake jointoken operation: %s\n' "$operation" >&2
+        exit 2
+        ;;
+    esac
+    ;;
+  *)
+    printf 'unsupported fake omnictl command: %s\n' "${1-}" >&2
+    exit 2
+    ;;
+esac

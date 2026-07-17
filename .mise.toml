@@ -24,15 +24,19 @@ run = "./scripts/check.sh"
 [tasks.lint]
 description = "Lint shell scripts and GitHub Actions workflows"
 run = [
-  "shellcheck scripts/*.sh",
+  "shellcheck scripts/*.sh tests/*.sh tests/fixtures/omnictl",
   "actionlint .github/workflows/*.yaml",
   "./scripts/check-ci-boundary.sh",
   "terraform fmt -check -recursive terraform",
 ]
 
+[tasks.test]
+description = "Run operator workflow tests with a mock Omni CLI"
+run = "./tests/rotate-omni-join-token.sh"
+
 [tasks.validate]
 description = "Run all repository validation"
-depends = ["check", "lint", "b2:tf:validate"]
+depends = ["check", "lint", "test", "b2:tf:validate"]
 
 [tasks.render]
 description = "Render the single production bundle"
