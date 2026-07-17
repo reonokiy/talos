@@ -1,0 +1,3 @@
+# Permanent marker for releases inside the documented ExternalDNS cleanup
+# compatibility boundary. Keep this file after the controller is retired.
+compatibility: external-dns-cleanup-v1

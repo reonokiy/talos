@@ -4,10 +4,10 @@ ExternalDNS watches only explicitly opted-in Traefik Ingress resources and
 publishes their status addresses into the `nokiy.net` Cloudflare zone.
 
 Before publishing this release, apply the repository's
-`terraform/cloudflare` stack. It creates the 1Password item
-`external-dns/cloudflare` in vault `talos.nokiy.net` with these fields:
+`terraform/cloudflare` stack. In vault `talos.nokiy.net`, it creates item
+`external-dns` with section `cloudflare` and these fields:
 
-| Field | Purpose |
+| Section field | Purpose |
 |---|---|
 | `api-token` | Cloudflare API Token restricted to Zone Read and DNS Edit for `nokiy.net` |
 | `zone-id` | Cloudflare zone identifier for `nokiy.net` |

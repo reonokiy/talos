@@ -5,13 +5,13 @@ data "cloudflare_zones" "external_dns" {
 }
 
 data "cloudflare_api_token_permission_groups_list" "dns_write" {
-  name      = "DNS%20Write"
+  name      = "DNS Write"
   scope     = "com.cloudflare.api.account.zone"
   max_items = 2
 }
 
 data "cloudflare_api_token_permission_groups_list" "zone_read" {
-  name      = "Zone%20Read"
+  name      = "Zone Read"
   scope     = "com.cloudflare.api.account.zone"
   max_items = 2
 }
@@ -61,12 +61,12 @@ data "onepassword_vault" "talos" {
 
 resource "onepassword_item" "external_dns" {
   vault    = data.onepassword_vault.talos.uuid
-  title    = "external-dns/cloudflare"
+  title    = "external-dns"
   category = "login"
   tags     = ["terraform", "talos", "external-dns", "cloudflare"]
 
   section_map = {
-    credentials = {
+    cloudflare = {
       field_map = {
         "api-token" = {
           type  = "CONCEALED"

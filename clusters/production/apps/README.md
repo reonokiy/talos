@@ -17,18 +17,20 @@ metadata:
     secrets.nokiy.net/onepassword: enabled
 ```
 
-Every item title must start with its Kubernetes namespace and `/`:
+Each item title must exactly equal its Kubernetes namespace. Put every
+application or purpose in its own section, and reference fields as:
 
 ```text
-<namespace>/<application-or-purpose>
+<namespace-item>/<section>/<field>
 ```
 
-For example, an `example` namespace may read fields from the
-`example/database` item, but admission rejects references to
-`another-namespace/database`. Declare explicit item and field references. Field
-labels within an item must be unique. `dataFrom`, `find`, and `extract` are
-forbidden because they can bypass the item-prefix boundary. Generated Secrets
-are owned by their `ExternalSecret`:
+For example, the key `example/database/password` reads the `password` field
+from section `database` of the item named `example`. Admission rejects a first
+path segment that differs from the ExternalSecret namespace. Declare explicit
+item, section, and field references. Field labels within a section must be
+unique. `dataFrom`, `find`, and `extract` are forbidden because they can bypass
+the namespace-matched item boundary. Generated Secrets are owned by their
+`ExternalSecret`:
 
 ```yaml
 apiVersion: external-secrets.io/v1
@@ -59,7 +61,8 @@ mise run sync-external-secrets-secret
 ```
 
 The Store condition admits only explicitly labeled namespaces, while a
-`ValidatingAdmissionPolicy` enforces item-title prefixes at the Kubernetes API.
+`ValidatingAdmissionPolicy` requires the item path segment to equal the
+ExternalSecret namespace at the Kubernetes API.
 The Service Account remains vault-scoped, so these controls prevent
 configuration-level cross-namespace access but cannot provide cryptographic
 item isolation inside a single vault.

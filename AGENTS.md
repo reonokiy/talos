@@ -131,12 +131,12 @@ own namespaced `ExternalSecret` resources. Follow
   `secrets.nokiy.net/onepassword: enabled` before it can reference the central
   Store. Every `ExternalSecret` must set `secretStoreRef.kind` to
   `ClusterSecretStore` and `secretStoreRef.name` to `onepassword`.
-- Name each 1Password item `<namespace>/<application-or-purpose>`. Every
-  `spec.data[].remoteRef.key` must therefore have the form
-  `<namespace>/<item>/<field>` and start with the `ExternalSecret` namespace
-  followed by `/`.
+- Name each 1Password item exactly after its Kubernetes namespace and put each
+  application or purpose in a section. Every `spec.data[].remoteRef.key` must
+  have the form `<namespace-item>/<section>/<field>` and start with the
+  `ExternalSecret` namespace followed by `/`.
 - Use explicit `spec.data` mappings. `dataFrom`, `find`, and `extract` are
-  forbidden because they can bypass the namespace item-prefix boundary.
+  forbidden because they can bypass the namespace-matched item boundary.
 - Generated Kubernetes Secrets must use `spec.target.creationPolicy: Owner`.
   Prefer `deletionPolicy: Retain` unless an application has a deliberate and
   reviewed reason to delete the Secret with its external source.
@@ -183,6 +183,12 @@ clusters/production/current/entrypoint/release.yaml
   entrypoint references only a completed immutable release prefix.
 - `scripts/rollback-b2.sh` restores an archived entrypoint. It does not copy all
   layer files because the entrypoint already references the immutable snapshot.
+- Keep the permanent
+  `clusters/production/rollback-compatibility/external-dns-cleanup-v1` marker.
+  Before removing ExternalDNS or rolling back across its introduction, first
+  publish a release that removes DNS opt-ins or public Ingresses while the
+  controller still runs, wait for reconciliation, and verify its owned A/TXT
+  records are gone. Only a later release may retire the ingress stack.
 - Do not replace this protocol with an in-place multi-file sync under the active
   prefix. B2 has no multi-object transaction, and stale active files cannot be
   treated as an atomic release.
@@ -194,6 +200,10 @@ clusters/production/current/entrypoint/release.yaml
   values.
 - HCP Terraform provides remote state, locking, and state history. Terraform
   runs locally through the repository's fnox profile.
+- Local Terraform uses a dedicated 1Password writer Service Account whose token
+  is stored in `dev`; never reuse the read-only ESO Service Account that enters
+  the cluster. The writer may access `talos.nokiy.net` but must not access
+  `dev`.
 - The publisher can write only below the production prefix. GitHub Actions
   receives this key through the protected `production` Environment.
 - The Flux reader is bucket-scoped and read-only. Bucket scope is required

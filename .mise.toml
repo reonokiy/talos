@@ -18,7 +18,7 @@ terraform = "1.13.5"
 op = "latest"
 
 [tasks.check]
-description = "Render the production bundle and template the pinned Cilium chart"
+description = "Render the production bundle and template the pinned infrastructure charts"
 run = "./scripts/check.sh"
 
 [tasks.lint]

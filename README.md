@@ -154,12 +154,13 @@ the required 1Password fields and application opt-in contract:
 - [`infrastructure/system/external-dns`](clusters/production/infrastructure/system/external-dns/README.md)
 - [`terraform/cloudflare`](terraform/cloudflare/README.md)
 
-Roll out in this order: create the documented bootstrap management Token item
-in the `dev` 1Password vault, run the Cloudflare Terraform stack to generate
-the runtime item, apply the updated cluster-level Talos patch through Omni,
-confirm the exclusion label is absent from all three nodes, then publish the
-reviewed Git revision to B2 through the normal `main` workflow. The system
-layer waits for the secrets layer, so ExternalDNS starts only after its
+Roll out in this order: create the documented Cloudflare management Token and
+dedicated Terraform 1Password writer items in the `dev` vault, run the
+Cloudflare Terraform stack to generate the runtime item, apply the updated
+cluster-level Talos patch through Omni, confirm the exclusion label is absent
+from all three nodes, then publish the reviewed Git revision to B2 through the
+normal `main` workflow. The writer credential never enters the cluster. The
+system layer waits for the secrets layer, so ExternalDNS starts only after its
 `ExternalSecret` can reconcile.
 
 ## Kubelet serving certificates
@@ -329,6 +330,17 @@ The rollback profile downloads the archived release entrypoint with the
 releases-only reader, then atomically restores it with the write-only publisher.
 The entrypoint selects the complete immutable snapshot; layer files are never
 copied during rollback. GitHub never receives recovery access.
+
+Releases from before the ExternalDNS cleanup boundary are intentionally
+rejected by `rollback-b2.sh`: pruning such a release can stop ExternalDNS before
+it observes Ingress removal and leave owned A/TXT records behind. A normal Git
+revert across the same boundary also requires two releases. First remove every
+public Ingress or its `dns.nokiy.net/publish` label while ExternalDNS remains
+running; reconcile, wait for at least one ExternalDNS interval, and verify the
+owned records are absent from authoritative DNS. Only a later release may
+remove ExternalDNS or Traefik. Keep
+`clusters/production/rollback-compatibility/external-dns-cleanup-v1` in every
+future release, including after this staged retirement.
 
 ## Security boundary
 

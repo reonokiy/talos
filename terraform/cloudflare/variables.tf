@@ -5,7 +5,7 @@ variable "cloudflare_api_token" {
 }
 
 variable "onepassword_service_account_token" {
-  description = "Service Account token used only to write the generated runtime credential to 1Password."
+  description = "Dedicated local Terraform writer Service Account token used only to write the generated runtime credential to 1Password."
   type        = string
   sensitive   = true
 }
