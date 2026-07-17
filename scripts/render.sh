@@ -12,6 +12,13 @@ OUT="$ROOT/.build/production"
 B2_ARCHIVE_PREFIX="${B2_ARCHIVE_PREFIX%/}/"
 B2_RELEASE_PREFIX="${B2_ARCHIVE_PREFIX}${RELEASE_ID}/"
 B2_RELEASE_PATH="./${B2_RELEASE_PREFIX%/}"
+LONGHORN_HELMRELEASE="$ROOT/clusters/production/infrastructure/storage/longhorn/helmrelease.yaml"
+LONGHORN_CHART_VERSION=$(yq eval -r '.spec.chart.spec.version // ""' "$LONGHORN_HELMRELEASE")
+
+if [[ ! $LONGHORN_CHART_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "Invalid Longhorn chart version: $LONGHORN_CHART_VERSION" >&2
+  exit 1
+fi
 
 rm -rf "$OUT"
 mkdir -p "$OUT/repository"
@@ -26,6 +33,7 @@ sed \
   -e "s|\${B2_REGION}|$B2_REGION|g" \
   -e "s|\${B2_RELEASE_PREFIX}|$B2_RELEASE_PREFIX|g" \
   -e "s|\${B2_RELEASE_PATH}|$B2_RELEASE_PATH|g" \
+  -e "s|\${LONGHORN_CHART_VERSION}|$LONGHORN_CHART_VERSION|g" \
   "$ROOT/bootstrap/release-entrypoint.yaml.tpl" > "$OUT/release.yaml"
 
 (

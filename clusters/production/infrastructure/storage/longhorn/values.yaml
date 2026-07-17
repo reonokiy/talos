@@ -1,0 +1,73 @@
+# The current Netcup nodes have only the Talos system disk (/dev/vda). This is
+# deliberately a zero-capacity controller installation: no StorageClass and no
+# default disk may be created until dedicated block devices are mounted.
+networkPolicies:
+  # Enable the chart's internal component policies. The distro-specific UI
+  # preset is disabled; networkpolicy.yaml separately denies cluster ingress.
+  enabled: true
+  type: ""
+
+service:
+  ui:
+    type: ClusterIP
+
+persistence:
+  createStorageClass: false
+  defaultClass: false
+  dataEngine: v1
+
+# Helm hook jobs are a poor GitOps retry boundary. Upgrade preflight is a
+# required manual gate documented in README.md.
+preUpgradeChecker:
+  jobEnabled: false
+  upgradeVersionCheck: true
+
+csi:
+  podAntiAffinityPreset: soft
+  attacherReplicaCount: 3
+  provisionerReplicaCount: 3
+  resizerReplicaCount: 3
+  snapshotterReplicaCount: 3
+
+defaultSettings:
+  # A node receives no disk unless an operator explicitly opts it in after the
+  # dedicated /var/mnt/longhorn mount has been verified.
+  createDefaultDiskLabeledNodes: true
+  defaultDataPath: /var/mnt/longhorn
+  defaultDataLocality: best-effort
+  defaultReplicaCount:
+    v1: 3
+    v2: 3
+  replicaSoftAntiAffinity: false
+  replicaAutoBalance: least-effort
+  storageOverProvisioningPercentage: 100
+  storageMinimalAvailablePercentage: 25
+  storageReservedPercentageForDefaultDisk: 10
+  allowVolumeCreationWithDegradedAvailability: false
+  allowEmptyNodeSelectorVolume: false
+  allowEmptyDiskSelectorVolume: false
+  nodeDrainPolicy: block-if-contains-last-replica
+  concurrentAutomaticEngineUpgradePerNodeLimit: 0
+  deletingConfirmationFlag: false
+  upgradeChecker: false
+  allowCollectingLonghornUsageMetrics: false
+  nodeDiskHealthMonitoring: false
+  kubernetesMetricsServerMetricsEnabled: false
+  v1DataEngine: true
+  v2DataEngine: false
+
+longhornManager:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+ingress:
+  enabled: false
+
+httproute:
+  enabled: false
+
+metrics:
+  serviceMonitor:
+    enabled: false
