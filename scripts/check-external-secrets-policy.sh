@@ -3,20 +3,17 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 APPS="$ROOT/clusters/production/apps"
+PRODUCTION="$ROOT/clusters/production"
 
 command -v yq >/dev/null
 command -v jq >/dev/null
 
-mapfile -d '' YAML_FILES < <(find "$APPS" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+mapfile -d '' APP_YAML_FILES < <(find "$APPS" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
+mapfile -d '' YAML_FILES < <(find "$PRODUCTION" -type f \( -name '*.yaml' -o -name '*.yml' \) -print0)
 
-if ((${#YAML_FILES[@]} == 0)); then
-  echo "External Secrets application policy checks passed."
-  exit 0
-fi
-
-if grep -En \
-  '^[[:space:]]*kind:[[:space:]]*(SecretStore|ClusterSecretStore|ClusterExternalSecret|PushSecret|ClusterPushSecret)[[:space:]]*$' \
-  "${YAML_FILES[@]}"; then
+if ((${#APP_YAML_FILES[@]} > 0)) && grep -En \
+    '^[[:space:]]*kind:[[:space:]]*(SecretStore|ClusterSecretStore|ClusterExternalSecret|PushSecret|ClusterPushSecret)[[:space:]]*$' \
+    "${APP_YAML_FILES[@]}"; then
   echo "Applications may only use read-only ExternalSecret resources with the central ClusterSecretStore." >&2
   exit 1
 fi
@@ -44,7 +41,7 @@ for file in "${YAML_FILES[@]}"; do
     prefix="${namespace}/"
     remainder=${key#"$prefix"}
     if [[ $key != "$prefix"* || ! $remainder =~ ^[^/]+/[^/]+$ ]]; then
-      echo "$file: ExternalSecret $namespace/$name remote key '$key' must use <namespace>/<item>/<field>." >&2
+      echo "$file: ExternalSecret $namespace/$name remote key '$key' must use <namespace-item>/<section>/<field>." >&2
       exit 1
     fi
   done < <(
@@ -65,4 +62,4 @@ for file in "${YAML_FILES[@]}"; do
   )
 done
 
-echo "External Secrets application policy checks passed."
+echo "External Secrets policy checks passed."

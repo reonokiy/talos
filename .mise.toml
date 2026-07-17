@@ -18,7 +18,7 @@ terraform = "1.13.5"
 op = "latest"
 
 [tasks.check]
-description = "Render the production bundle and template the pinned Cilium chart"
+description = "Render the production bundle and template the pinned infrastructure charts"
 run = "./scripts/check.sh"
 
 [tasks.lint]
@@ -32,7 +32,7 @@ run = [
 
 [tasks.validate]
 description = "Run all repository validation"
-depends = ["check", "lint", "b2:tf:validate"]
+depends = ["check", "lint", "b2:tf:validate", "cloudflare:tf:validate"]
 
 [tasks.render]
 description = "Render the single production bundle"
@@ -104,3 +104,26 @@ run = "fnox --no-daemon --profile b2-terraform exec --no-defaults -- terraform a
 [tasks."b2:tf:import-manual"]
 description = "Import an existing B2 bucket with fnox-managed credentials"
 run = "fnox --no-daemon --profile b2-terraform exec --no-defaults -- ./scripts/import-b2-terraform.sh"
+
+[tasks."cloudflare:tf:init"]
+description = "Initialize the Cloudflare ExternalDNS Terraform stack"
+dir = "terraform/cloudflare"
+run = "fnox --no-daemon --profile cloudflare-terraform exec --no-defaults -- terraform init"
+
+[tasks."cloudflare:tf:validate"]
+description = "Initialize providers without a backend and validate the Cloudflare stack"
+dir = "terraform/cloudflare"
+run = [
+  "terraform init -backend=false",
+  "terraform validate",
+]
+
+[tasks."cloudflare:tf:plan"]
+description = "Plan the ExternalDNS Cloudflare API Token and 1Password item"
+dir = "terraform/cloudflare"
+run = "fnox --no-daemon --profile cloudflare-terraform exec --no-defaults -- terraform plan"
+
+[tasks."cloudflare:tf:apply"]
+description = "Apply the ExternalDNS Cloudflare API Token and 1Password item"
+dir = "terraform/cloudflare"
+run = "fnox --no-daemon --profile cloudflare-terraform exec --no-defaults -- terraform apply"

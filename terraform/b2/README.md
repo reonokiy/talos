@@ -15,7 +15,7 @@ execution mode to **Local**, and replace these placeholders in the root
 TF_CLOUD_ORGANIZATION=reonokiy
 TF_WORKSPACE=talos-b2
 TF_TOKEN_app_terraform_io=op://dev/terraform/API_TOKEN
-TF_VAR_onepassword_service_account_token=op://talos.nokiy.net/service-account/credential
+TF_VAR_onepassword_service_account_token=op://dev/talos-terraform-onepassword-writer/credential
 ```
 
 The `b2-terraform` profile injects the HCP token only into local Terraform
@@ -48,8 +48,12 @@ Service Account token only through
 `OP_SERVICE_ACCOUNT_TOKEN`, because fnox would then use that token while
 resolving the profile.
 
-The Service Account only needs write access to `talos.nokiy.net`; it does not
-need access to `dev`, where fnox reads the B2 master key and HCP token.
+Create the `talos-terraform-onepassword-writer` item in `dev` with a
+`credential` field containing a dedicated Terraform writer Service Account
+token. The Service Account needs only the read/create/edit permissions required
+in `talos.nokiy.net` and must not have access to `dev`; the operator's Desktop
+session resolves the token before Terraform receives it. Never reuse the
+read-only ESO Service Account that is bootstrapped into the cluster.
 
 If `b2-talos-nokiy-net` already exists, import it before the first plan so
 Terraform updates it instead of creating a duplicate. Copy the vault and item

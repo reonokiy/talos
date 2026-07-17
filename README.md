@@ -40,10 +40,11 @@ pins Flux to the completed release prefix, so it cannot observe a partially
 published multi-file revision.
 
 The entrypoint creates independent `cluster-network`, `cluster-certificates`,
-`cluster-system` and `cluster-apps` Kustomizations over the same immutable
-Bucket artifact. Their dependency chain is network -> certificates -> system
--> apps. Health, inventory, pruning and failure reporting are isolated per
-layer while all layers advance to the same Git commit.
+`cluster-secrets`, `cluster-system` and `cluster-apps` Kustomizations over the
+same immutable Bucket artifact. Their dependency chain is network ->
+certificates -> secrets -> system -> apps. Health, inventory, pruning and
+failure reporting are isolated per layer while all layers advance to the same
+Git commit.
 
 This is intentionally a single-cluster layout. Cluster capabilities live under
 `clusters/production/infrastructure/` and workloads under
@@ -135,6 +136,32 @@ not implement DoT/DoH transports.
 CoreDNS and the Cilium `HelmRelease` opt out of Flux pruning. The network
 Kustomization and bootstrap root use `deletionPolicy: Orphan`, so deleting the
 B2 source cannot cascade into removing cluster networking or DNS.
+
+## Public ingress and DNS
+
+Traefik runs as a DaemonSet on the three control-plane nodes. Its LoadBalancer
+Service uses Cilium Node IPAM with `externalTrafficPolicy: Local`, so Service
+and Ingress status contain one address for every node with a ready local
+Traefik endpoint. No provider floating IP, L2 announcement or BGP control plane
+is required.
+
+ExternalDNS watches only explicitly labeled Traefik Ingress resources. It
+synchronizes their multi-A targets to the `nokiy.net` Cloudflare zone using a
+scoped API token supplied by External Secrets. See the component runbooks for
+the required 1Password fields and application opt-in contract:
+
+- [`infrastructure/network/traefik`](clusters/production/infrastructure/network/traefik/README.md)
+- [`infrastructure/system/external-dns`](clusters/production/infrastructure/system/external-dns/README.md)
+- [`terraform/cloudflare`](terraform/cloudflare/README.md)
+
+Roll out in this order: create the documented Cloudflare management Token and
+dedicated Terraform 1Password writer items in the `dev` vault, run the
+Cloudflare Terraform stack to generate the runtime item, apply the updated
+cluster-level Talos patch through Omni, confirm the exclusion label is absent
+from all three nodes, then publish the reviewed Git revision to B2 through the
+normal `main` workflow. The writer credential never enters the cluster. The
+system layer waits for the secrets layer, so ExternalDNS starts only after its
+`ExternalSecret` can reconcile.
 
 ## Kubelet serving certificates
 
@@ -303,6 +330,17 @@ The rollback profile downloads the archived release entrypoint with the
 releases-only reader, then atomically restores it with the write-only publisher.
 The entrypoint selects the complete immutable snapshot; layer files are never
 copied during rollback. GitHub never receives recovery access.
+
+Releases from before the ExternalDNS cleanup boundary are intentionally
+rejected by `rollback-b2.sh`: pruning such a release can stop ExternalDNS before
+it observes Ingress removal and leave owned A/TXT records behind. A normal Git
+revert across the same boundary also requires two releases. First remove every
+public Ingress or its `dns.nokiy.net/publish` label while ExternalDNS remains
+running; reconcile, wait for at least one ExternalDNS interval, and verify the
+owned records are absent from authoritative DNS. Only a later release may
+remove ExternalDNS or Traefik. Keep
+`clusters/production/rollback-compatibility/external-dns-cleanup-v1` in every
+future release, including after this staged retirement.
 
 ## Security boundary
 

@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - helmrepository.yaml
+  - helmrelease.yaml
+  - poddisruptionbudget.yaml
+  - network-policy.yaml
+configMapGenerator:
+  - name: traefik-values
+    namespace: traefik
+    files:
+      - values.yaml=values.yaml
+generatorOptions:
+  disableNameSuffixHash: true
+  labels:
+    app.kubernetes.io/part-of: traefik
+    reconcile.fluxcd.io/watch: Enabled

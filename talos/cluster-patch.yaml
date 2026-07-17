@@ -8,6 +8,13 @@ cluster:
       name: none
   proxy:
     disabled: true
+machine:
+  # Talos adds this label to control-plane nodes by default. Cilium Node IPAM
+  # deliberately excludes labeled nodes, but this cluster's three public
+  # control-plane nodes are the intended Traefik entry points.
+  nodeLabels:
+    node.kubernetes.io/exclude-from-external-load-balancers:
+      $patch: delete
 ---
 # Talos 1.13's document-style KubeSpan configuration. The former
 # machine.network.kubespan field is deprecated.
