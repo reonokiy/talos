@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Interactively sync the Talos Omni template"
+set -euo pipefail
+
+exec "$MISE_PROJECT_ROOT/scripts/omni-cluster-template.sh" apply

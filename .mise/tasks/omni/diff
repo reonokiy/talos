@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Compare the Talos template with live Omni resources"
+set -euo pipefail
+
+exec "$MISE_PROJECT_ROOT/scripts/omni-cluster-template.sh" diff

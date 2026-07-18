@@ -1,0 +1,39 @@
+# Longhorn uses a filesystem-backed V1 data disk at /var/mnt/longhorn. The
+# kubelet bind mount is required because kubelet runs in a container on Talos.
+machine:
+  kubelet:
+    extraMounts:
+      - destination: /var/mnt/longhorn
+        type: bind
+        source: /var/mnt/longhorn
+        options:
+          - bind
+          - rshared
+          - rw
+---
+# Cap /var so a freshly provisioned 256 GiB system disk has deterministic free
+# space for the Longhorn user volume. Talos does not shrink an existing
+# EPHEMERAL partition when this document is first applied.
+apiVersion: v1alpha1
+kind: VolumeConfig
+name: EPHEMERAL
+provisioning:
+  minSize: 96GiB
+  maxSize: 96GiB
+  grow: false
+---
+# Allocate exactly 150 GiB on the Talos system disk and mount it automatically
+# at /var/mnt/longhorn. Matching system_disk is stable across virtio device-name
+# changes and cannot select an attached non-system disk.
+apiVersion: v1alpha1
+kind: UserVolumeConfig
+name: longhorn
+volumeType: partition
+provisioning:
+  diskSelector:
+    match: "system_disk"
+  minSize: 150GiB
+  maxSize: 150GiB
+  grow: false
+filesystem:
+  type: xfs

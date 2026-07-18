@@ -1,0 +1,7 @@
+# Preserve the kubelet serving-certificate rotation setting from the existing
+# Omni cluster patch. Keeping it in its own ordered patch also isolates the
+# Longhorn mount changes in storage-patch.yaml.
+machine:
+  kubelet:
+    extraArgs:
+      rotate-server-certificates: "true"

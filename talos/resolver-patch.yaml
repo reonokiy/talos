@@ -1,0 +1,14 @@
+# Omni cluster-level patch. Keep the existing ConfigPatch ID from the live
+# cluster so the declarative template adopts it without resource replacement.
+#
+# Netcup supplies provider search domains with wildcard DNS. Disable those
+# defaults so Kubernetes ndots expansion cannot resolve public names through a
+# provider suffix.
+apiVersion: v1alpha1
+kind: ResolverConfig
+nameservers:
+  - address: 1.1.1.1
+  - address: 8.8.8.8
+searchDomains:
+  domains: []
+  disableDefault: true

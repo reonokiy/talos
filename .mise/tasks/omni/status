@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Show current Talos Omni template status without waiting"
+set -euo pipefail
+
+exec "$MISE_PROJECT_ROOT/scripts/omni-cluster-template.sh" status

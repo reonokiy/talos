@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Dry-run the Talos Omni template sync with a verbose diff"
+set -euo pipefail
+
+exec "$MISE_PROJECT_ROOT/scripts/omni-cluster-template.sh" plan

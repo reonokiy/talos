@@ -1,0 +1,50 @@
+kind: Cluster
+name: talos-default
+kubernetes:
+  version: v1.36.2
+talos:
+  version: v1.13.6
+features:
+  enableWorkloadProxy: true
+  useEmbeddedDiscoveryService: true
+  diskEncryption: true
+  backupConfiguration:
+    interval: 1h
+patches:
+  - file: cluster-patch.yaml
+    idOverride: 200-talos-default
+  - file: kubelet-patch.yaml
+    idOverride: 300-talos-default-kubelet
+  - file: storage-patch.yaml
+    idOverride: 400-talos-default-longhorn-storage
+  - file: resolver-patch.yaml
+    idOverride: 500-ced320a4-4f06-4b3a-8efd-a962ae219a28
+systemExtensions:
+  - siderolabs/iscsi-tools
+  - siderolabs/qemu-guest-agent
+  - siderolabs/util-linux-tools
+---
+kind: ControlPlane
+machines:
+  - 3713975a-51ce-4344-a2b0-2594476a79a9
+  - a88c8a53-bc40-4426-9548-15b2f1c7db4b
+  - caec3228-2591-4c50-a6db-5359c690a881
+---
+kind: Workers
+name: workers
+machines: []
+---
+kind: Machine
+name: 3713975a-51ce-4344-a2b0-2594476a79a9
+install:
+  disk: /dev/vda
+---
+kind: Machine
+name: a88c8a53-bc40-4426-9548-15b2f1c7db4b
+install:
+  disk: /dev/vda
+---
+kind: Machine
+name: caec3228-2591-4c50-a6db-5359c690a881
+install:
+  disk: /dev/vda
