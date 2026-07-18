@@ -1,4 +1,4 @@
-# Talos + Cilium + Flux + Backblaze B2
+# Talos + Cilium + Flux + Longhorn + Backblaze B2
 
 This repository bootstraps Cilium on a Talos/Omni cluster, installs Flux
 without a Git source, and lets Flux reconcile an immutable repository snapshot
@@ -40,10 +40,11 @@ pins Flux to the completed release prefix, so it cannot observe a partially
 published multi-file revision.
 
 The entrypoint creates independent `cluster-network`, `cluster-certificates`,
-`cluster-system` and `cluster-apps` Kustomizations over the same immutable
-Bucket artifact. Their dependency chain is network -> certificates -> system
--> apps. Health, inventory, pruning and failure reporting are isolated per
-layer while all layers advance to the same Git commit.
+`cluster-secrets`, `cluster-storage`, `cluster-system` and `cluster-apps`
+Kustomizations over the same immutable Bucket artifact. Their dependency chain
+is network -> certificates -> secrets -> storage -> system -> apps. Health,
+inventory, pruning and failure reporting are isolated per layer while all
+layers advance to the same Git commit.
 
 This is intentionally a single-cluster layout. Cluster capabilities live under
 `clusters/production/infrastructure/` and workloads under
@@ -82,6 +83,13 @@ Omni Config Patch before cluster creation. Cluster scope ensures future workers
 inherit KubeSpan and resolver policy. Enable Omni's embedded discovery service.
 The patch disables Flannel and kube-proxy, so nodes remain `NotReady` until
 Cilium is installed.
+
+Longhorn has separate pre-merge prerequisites that are intentionally not
+encoded as a Config Patch. Use Omni to install `siderolabs/iscsi-tools` and
+`siderolabs/util-linux-tools` on every node before reconciling the storage
+layer. The current nodes have only the Talos system disk `/dev/vda`; do not add
+a Longhorn data mount, node disk label, or `UserVolumeConfig` until dedicated
+non-system block devices exist.
 
 The patch also removes Netcup's `hotsrv.de`/`bestsrv.de` resolver search
 domains. Their wildcard records made Kubernetes' `ndots:5` lookup resolve
@@ -181,6 +189,20 @@ The certificates layer installs `kubelet-serving-cert-approver` v0.11.0 with a m
 image pinned by digest. It validates node identity and SANs before approving
 Talos kubelet serving CSRs, keeping logs, exec and metrics-server functional
 across certificate rotations.
+
+## Longhorn storage control plane
+
+The storage layer pins Longhorn `1.12.0` and enables only the V1 data engine.
+It is deliberately installed with zero capacity: it creates no StorageClass and
+no node receives a disk unless an operator opts it in. This prevents Longhorn
+replica data from consuming `/dev/vda` and competing with Talos, etcd, images,
+and logs.
+
+The unauthenticated UI remains a ClusterIP with no Ingress or HTTPRoute.
+Deletion is protected at the Flux Kustomization, resource, Helm CRD, and
+Longhorn confirmation-setting levels. See the
+[Longhorn runbook](clusters/production/infrastructure/storage/longhorn/README.md)
+for rollout gates and the later dedicated-disk enablement plan.
 
 ## 4. Create B2 keys
 
@@ -298,6 +320,8 @@ Bootstrap ownership is intentionally narrow:
 | Release selection | `current/entrypoint/release.yaml` generated from the Git SHA | Root Flux Kustomization |
 | Network layer | `clusters/production/infrastructure/network` | `cluster-network` Kustomization |
 | Certificate layer | `clusters/production/infrastructure/certificates` | `cluster-certificates` Kustomization |
+| Secret-management layer | `clusters/production/infrastructure/secrets` | `cluster-secrets` Kustomization |
+| Storage layer | `clusters/production/infrastructure/storage` | `cluster-storage` Kustomization |
 | System layer | `clusters/production/infrastructure/system` | `cluster-system` Kustomization |
 | Application layer | `clusters/production/apps` | `cluster-apps` Kustomization |
 
@@ -312,6 +336,7 @@ flux get sources bucket -n flux-system
 flux get kustomizations -n flux-system
 flux get helmreleases -A
 helm status cilium -n kube-system
+helm status longhorn -n longhorn-system
 mise run status
 ```
 
@@ -328,8 +353,10 @@ session.
 
 ## Rollback
 
-Normal rollback is a Git revert merged to `main`. For an emergency restore of
-a versioned release:
+Normal rollback is a forward-fix commit that preserves the live Longhorn chart
+version. `git revert` is allowed only when the reverted diff cannot change the
+storage layer; reverting a Longhorn upgrade would attempt an unsupported
+downgrade. For an emergency restore of a versioned release:
 
 ```bash
 mise run rollback-b2 <git-sha>
@@ -341,7 +368,13 @@ flux get kustomizations -n flux-system
 The rollback profile downloads the archived release entrypoint with the
 releases-only reader, then atomically restores it with the write-only publisher.
 The entrypoint selects the complete immutable snapshot; layer files are never
-copied during rollback. GitHub never receives recovery access.
+copied during rollback. GitHub never receives recovery access. The script also
+downloads the archived Longhorn HelmRelease and rejects a missing or different
+chart version. It also requires the current checkout to match the live
+desired and latest successfully installed Helm release, requires a stable Ready
+status, and fails closed when the cluster cannot be queried. Longhorn cannot be
+downgraded; restore older non-storage changes as a new forward-fix commit that
+retains the current Longhorn version.
 
 ## Security boundary
 

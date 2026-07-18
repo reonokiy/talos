@@ -3,6 +3,10 @@ kind: Bucket
 metadata:
   name: cluster-release
   namespace: flux-system
+  annotations:
+    # Emergency rollback may not select an artifact with an older Longhorn
+    # chart. scripts/rollback-b2.sh verifies this marker and the manifest.
+    storage.nokiy.net/longhorn-chart-version: "${LONGHORN_CHART_VERSION}"
 spec:
   provider: generic
   interval: 1m
@@ -72,11 +76,30 @@ spec:
 apiVersion: kustomize.toolkit.fluxcd.io/v1
 kind: Kustomization
 metadata:
-  name: cluster-system
+  name: cluster-storage
   namespace: flux-system
 spec:
   dependsOn:
     - name: cluster-secrets
+  interval: 5m
+  retryInterval: 1m
+  timeout: 20m
+  wait: true
+  prune: true
+  deletionPolicy: Orphan
+  sourceRef:
+    kind: Bucket
+    name: cluster-release
+  path: ${B2_RELEASE_PATH}/clusters/production/infrastructure/storage
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: cluster-system
+  namespace: flux-system
+spec:
+  dependsOn:
+    - name: cluster-storage
   interval: 5m
   retryInterval: 1m
   timeout: 10m

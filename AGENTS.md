@@ -59,6 +59,8 @@ clusters/production/
 │   │   └── kubelet-serving-cert-approver/
 │   ├── secrets/
 │   │   └── external-secrets/
+│   ├── storage/
+│   │   └── longhorn/
 │   └── system/
 │       └── metrics-server/
 ├── apps/
@@ -71,8 +73,11 @@ clusters/production/
   similar certificate prerequisites.
 - `infrastructure/secrets` owns External Secrets Operator, its CRDs, admission
   policies, and other cluster-wide secret-management safeguards.
+- `infrastructure/storage` owns storage controllers and their cluster-scoped
+  APIs. Longhorn is currently a zero-capacity control-plane installation: the
+  Netcup nodes have only `/dev/vda`, so no disk or StorageClass may be created.
 - `infrastructure/system` owns cluster services that depend on networking and
-  certificates and secret management, such as Metrics Server.
+  certificates, secret management, and storage, such as Metrics Server.
 - `apps` is reserved for application workloads. Do not place cluster-wide
   controllers or shared application prerequisites there.
 - If another cluster later requires reuse, extract explicit shared bases then.
@@ -80,13 +85,14 @@ clusters/production/
 
 ### Flux reconciliation layers
 
-The generated release entrypoint creates five Kustomizations over one immutable
+The generated release entrypoint creates six Kustomizations over one immutable
 `cluster-release` Bucket artifact:
 
 ```text
 cluster-network
   -> cluster-certificates
   -> cluster-secrets
+  -> cluster-storage
   -> cluster-system
   -> cluster-apps
 ```
@@ -99,6 +105,18 @@ cluster-network
 - The secrets layer uses `deletionPolicy: Orphan`; loss of a release source must
   not remove External Secrets CRDs, admission policy, or the controller while
   applications still depend on generated Secrets.
+- The storage layer uses `deletionPolicy: Orphan`. Longhorn's Namespace and
+  HelmRelease disable pruning, and its CRDs carry Helm's keep policy. Never
+  remove or downgrade Longhorn through a B2 rollback, Git revert, or manifest
+  deletion; follow its reviewed maintenance and uninstall procedures.
+- Until dedicated non-system disks exist, preserve Longhorn's fail-closed
+  settings: no StorageClass, opt-in-only default disks, `/var/mnt/longhorn`, no
+  schedulable disks, no degraded volume creation, and V2 disabled. Empty volume
+  selectors with `allowEmpty*SelectorVolume=false` can still use untagged
+  nodes/disks; future capacity must tag every schedulable resource and require
+  those tags in its StorageClass. Do not add Longhorn's `create-default-disk`
+  label or `default-disks-config` annotation, or change
+  `talos/cluster-patch.yaml` to place replica data on the system disk.
 - External Secrets is currently in stage 2 of a CRD ownership repair. The
   `external-secrets-crds` HelmRelease is suspended after restoring every CRD
   and recording `helm.sh/resource-policy: keep` in release revision 2. The
@@ -183,6 +201,10 @@ clusters/production/current/entrypoint/release.yaml
   entrypoint references only a completed immutable release prefix.
 - `scripts/rollback-b2.sh` restores an archived entrypoint. It does not copy all
   layer files because the entrypoint already references the immutable snapshot.
+- Every release records its exact Longhorn chart version. Emergency rollback
+  fails closed unless the archived marker and manifest, current checkout, live
+  desired version, and latest successfully installed version all match and the
+  live HelmRelease is stably Ready, because Longhorn does not support downgrades.
 - Do not replace this protocol with an in-place multi-file sync under the active
   prefix. B2 has no multi-object transaction, and stale active files cannot be
   treated as an atomic release.
